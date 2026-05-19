@@ -77,6 +77,27 @@ export default function ProfileScreen() {
           <Text style={styles.title}>Task Warrior</Text>
         </LinearGradient>
 
+        {/* Streak Card */}
+        {stats?.current_streak > 0 && (
+          <View style={styles.section}>
+            <LinearGradient
+              colors={['#fb923c', '#c2410c']}
+              style={styles.streakCard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <View style={styles.streakContent}>
+                <Text style={styles.streakValue}>{stats.current_streak} Days</Text>
+                <Text style={styles.streakLabel}>Current Streak</Text>
+                <Text style={styles.streakLongest}>
+                  Longest: {stats.longest_streak} days
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
+
         {/* Stats Overview */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📊 Statistics</Text>
@@ -278,5 +299,34 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  streakCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+  },
+  streakEmoji: {
+    fontSize: 48,
+  },
+  streakContent: {
+    flex: 1,
+  },
+  streakValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  streakLabel: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  streakLongest: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.7,
+    marginTop: 4,
   },
 });

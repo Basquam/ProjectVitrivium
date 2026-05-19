@@ -18,7 +18,15 @@ import TaskCard from '../../src/components/TaskCard';
 import { createTask, completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import VictoryModal from '../../src/components/VictoryModal';
-import { TaskStatus } from '../../src/types';
+import { TaskStatus, TaskFrequency } from '../../src/types';
+import * as Haptics from 'expo-haptics';
+
+const FREQUENCIES = [
+  { id: TaskFrequency.ONCE, label: 'One-time', icon: '📌' },
+  { id: TaskFrequency.DAILY, label: 'Daily', icon: '🔄' },
+  { id: TaskFrequency.WEEKLY, label: 'Weekly', icon: '📅' },
+  { id: TaskFrequency.MONTHLY, label: 'Monthly', icon: '🗓️' },
+];
 
 export default function TasksScreen() {
   const { todayTasks, refreshAll } = useApp();
@@ -27,6 +35,7 @@ export default function TasksScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [frequency, setFrequency] = useState(TaskFrequency.ONCE);
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
 
@@ -47,15 +56,15 @@ export default function TasksScreen() {
         title: title.trim(),
         description: description.trim() || undefined,
         category: category.trim() || undefined,
+        frequency: frequency,
       });
       
       setTitle('');
       setDescription('');
       setCategory('');
+      setFrequency(TaskFrequency.ONCE);
       setModalVisible(false);
       await refreshAll();
-      
-      Alert.alert('Success', 'Task created successfully!');
     } catch (error) {
       console.error('Error creating task:', error);
       Alert.alert('Error', 'Failed to create task');
@@ -64,6 +73,9 @@ export default function TasksScreen() {
 
   const handleCompleteTask = async (taskId: string) => {
     try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       const response = await completeTask(taskId);
       
       if (response.victory) {
@@ -107,6 +119,7 @@ export default function TasksScreen() {
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => setModalVisible(true)}
+            testID="add-task-btn"
           >
             <Ionicons name="add" size={28} color="#0a0a0a" />
           </TouchableOpacity>
@@ -122,7 +135,6 @@ export default function TasksScreen() {
             />
           }
         >
-          {/* Pending Tasks */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               ⏳ Pending ({pendingTasks.length})
@@ -143,7 +155,6 @@ export default function TasksScreen() {
             )}
           </View>
 
-          {/* Completed Tasks */}
           {completedTasks.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
@@ -161,7 +172,6 @@ export default function TasksScreen() {
           )}
         </ScrollView>
 
-        {/* Create Task Modal */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -172,40 +182,69 @@ export default function TasksScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Create New Task</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} testID="close-task-modal">
                   <Ionicons name="close" size={28} color="#9ca3af" />
                 </TouchableOpacity>
               </View>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Task title *"
-                placeholderTextColor="#6b7280"
-                value={title}
-                onChangeText={setTitle}
-              />
+              <ScrollView style={{ maxHeight: 500 }}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Task title *"
+                  placeholderTextColor="#6b7280"
+                  value={title}
+                  onChangeText={setTitle}
+                  testID="task-title-input"
+                />
 
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Description (optional)"
-                placeholderTextColor="#6b7280"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-              />
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Description (optional)"
+                  placeholderTextColor="#6b7280"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={3}
+                  testID="task-description-input"
+                />
 
-              <TextInput
-                style={styles.input}
-                placeholder="Category (optional)"
-                placeholderTextColor="#6b7280"
-                value={category}
-                onChangeText={setCategory}
-              />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Category (optional)"
+                  placeholderTextColor="#6b7280"
+                  value={category}
+                  onChangeText={setCategory}
+                  testID="task-category-input"
+                />
+
+                <Text style={styles.fieldLabel}>Repeat</Text>
+                <View style={styles.frequencyGrid}>
+                  {FREQUENCIES.map((freq) => (
+                    <TouchableOpacity
+                      key={freq.id}
+                      style={[
+                        styles.frequencyOption,
+                        frequency === freq.id && styles.frequencyOptionSelected,
+                      ]}
+                      onPress={() => setFrequency(freq.id)}
+                      testID={`frequency-${freq.id}`}
+                    >
+                      <Text style={styles.frequencyIcon}>{freq.icon}</Text>
+                      <Text style={[
+                        styles.frequencyLabel,
+                        frequency === freq.id && styles.frequencyLabelSelected,
+                      ]}>
+                        {freq.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
 
               <TouchableOpacity
                 style={styles.createButton}
                 onPress={handleCreateTask}
+                testID="submit-task-btn"
               >
                 <Text style={styles.createButtonText}>Create Task</Text>
               </TouchableOpacity>
@@ -213,13 +252,14 @@ export default function TasksScreen() {
           </View>
         </Modal>
 
-        {/* Victory Modal */}
         {victoryData && (
           <VictoryModal
             visible={victoryModalVisible}
             victoryText={victoryData.victory_text}
             pointsEarned={victoryData.points_earned}
+            streakBonus={victoryData.streak_bonus}
             badgeEarned={victoryData.badge_earned}
+            villainName={victoryData.villain_name}
             onClose={handleCloseVictory}
           />
         )}
@@ -312,6 +352,42 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f3f4f6',
+    marginBottom: 8,
+  },
+  frequencyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  frequencyOption: {
+    width: '48%',
+    backgroundColor: '#374151',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  frequencyOptionSelected: {
+    borderColor: '#ffd700',
+  },
+  frequencyIcon: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  frequencyLabel: {
+    fontSize: 13,
+    color: '#9ca3af',
+    fontWeight: '600',
+  },
+  frequencyLabelSelected: {
+    color: '#ffd700',
   },
   createButton: {
     backgroundColor: '#ffd700',

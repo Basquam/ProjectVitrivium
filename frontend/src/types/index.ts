@@ -11,14 +11,22 @@ export enum TaskStatus {
   COMPLETED = 'completed'
 }
 
+export enum TaskFrequency {
+  ONCE = 'once',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly'
+}
+
 export interface StoryBeat {
   type: BeatType;
   title: string;
   text: string;
-  image_url?: string;
-  villain_name?: string;
+  image_url: string;
+  villain_name: string;
   reward_points: number;
-  reward_badge?: string;
+  reward_badge: string;
+  image_prompt?: string;
 }
 
 export interface StoryAct {
@@ -32,6 +40,9 @@ export interface Story {
   title: string;
   description: string;
   theme: string;
+  icon: string;
+  color_primary: string;
+  color_secondary: string;
   total_acts: number;
   acts: StoryAct[];
   total_points: number;
@@ -60,6 +71,7 @@ export interface Task {
   status: TaskStatus;
   story_id?: string;
   due_date: string;
+  frequency: TaskFrequency;
   created_at: string;
   completed_at?: string;
 }
@@ -69,6 +81,7 @@ export interface TaskCreate {
   description?: string;
   category?: string;
   due_date?: string;
+  frequency?: TaskFrequency;
 }
 
 export interface ActiveStoryResponse {
@@ -79,12 +92,21 @@ export interface ActiveStoryResponse {
   progress_percentage?: number;
 }
 
+export interface UserStreak {
+  current_streak: number;
+  longest_streak: number;
+  last_completion_date?: string;
+  total_completions: number;
+}
+
 export interface TaskCompleteResponse {
   task: Task;
   victory?: {
     points_earned: number;
+    streak_bonus: number;
     badge_earned?: string;
     victory_text: string;
+    villain_name?: string;
   };
   story_advancement?: {
     story_completed: boolean;
@@ -93,5 +115,15 @@ export interface TaskCompleteResponse {
     message?: string;
     final_score?: number;
   };
+  streak?: UserStreak;
   message: string;
+}
+
+export interface CustomStoryRequest {
+  title: string;
+  description: string;
+  theme: string;
+  icon: string;
+  villains: string[];
+  num_acts: number;
 }

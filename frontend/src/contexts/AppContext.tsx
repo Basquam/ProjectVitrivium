@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ActiveStoryResponse, Task } from '../types';
-import { getActiveStory, getTodayTasks } from '../services/api';
+import { ActiveStoryResponse, Task, UserStreak } from '../types';
+import { getActiveStory, getTodayTasks, getStreak } from '../services/api';
 
 interface AppContextType {
   activeStory: ActiveStoryResponse | null;
   todayTasks: Task[];
+  streak: UserStreak | null;
   loading: boolean;
   refreshActiveStory: () => Promise<void>;
   refreshTasks: () => Promise<void>;
+  refreshStreak: () => Promise<void>;
   refreshAll: () => Promise<void>;
 }
 
@@ -16,6 +18,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activeStory, setActiveStory] = useState<ActiveStoryResponse | null>(null);
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [streak, setStreak] = useState<UserStreak | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshActiveStory = async () => {
@@ -36,9 +39,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshStreak = async () => {
+    try {
+      const data = await getStreak();
+      setStreak(data);
+    } catch (error) {
+      console.error('Error fetching streak:', error);
+    }
+  };
+
   const refreshAll = async () => {
     setLoading(true);
-    await Promise.all([refreshActiveStory(), refreshTasks()]);
+    await Promise.all([refreshActiveStory(), refreshTasks(), refreshStreak()]);
     setLoading(false);
   };
 
@@ -51,9 +63,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       value={{
         activeStory,
         todayTasks,
+        streak,
         loading,
         refreshActiveStory,
         refreshTasks,
+        refreshStreak,
         refreshAll,
       }}
     >

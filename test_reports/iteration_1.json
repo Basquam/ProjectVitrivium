@@ -1,0 +1,45 @@
+{
+  "summary": "Backend-only testing for Quest Hero expansion features. Created comprehensive pytest suite at /app/backend/tests/test_quest_hero.py with 20 tests covering all 6 new expansion features. All 20/20 tests passed (100% backend success rate). Live AI image generation calls were intentionally avoided (credit-conscious) — verified endpoint registration via 422 validation response and cache behavior via manual cache insertion in MongoDB.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_quest_hero.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: The /api/villains/{villain_name}/generate-image endpoint takes image_prompt as a query parameter rather than a request body — minor REST design issue but functional.",
+    "Streak logic: If a user skips a day (streak.last_completion_date is neither today nor yesterday), it resets to 1 which is correct. Tested and verified.",
+    "Monthly recurrence uses fixed +30 days approximation (acceptable; documented in code as 'Approximate month').",
+    "server.py file is approaching ~660 lines; consider splitting into modules (stories.py, tasks.py, streaks.py, villains.py routers) if it grows further."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_quest_hero.py (created)"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20)",
+    "frontend": "not tested (skipped per request)"
+  },
+  "seed_data_creation": "Created TEST_-prefixed tasks, custom stories, and image_cache entries for testing. All cleaned up via module-scoped pytest fixture (before+after). Also resets user_progress and user_streak collections during run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Test file is /app/backend/tests/test_quest_hero.py. Run with: cd /app/backend && python -m pytest tests/test_quest_hero.py -v. EXPO_PUBLIC_BACKEND_URL is read from env (not EXPO_BACKEND_URL — note the PUBLIC). MongoDB cleanup happens automatically. Live AI image generation NOT tested to save credits — endpoint registration verified via 422 validation response. Wild West regression test (full 10-beat playthrough, 4 badges, 300 points) passes.",
+  "tests_verified": {
+    "stories": "GET /api/stories returns all 6 built-in stories with required fields; all 6 expected IDs present (wild-west-redemption, space-odyssey, medieval-quest, detective-noir, zombie-apocalypse, pirate-treasure)",
+    "custom_story": "POST /api/stories/custom creates story with FINALE in last act; DELETE works; villains<num_acts returns 400",
+    "streak": "Default empty streak structure correct; current_streak=1 after first completion; multiple same-day completions do NOT double-count current_streak (stays at 1) but total_completions increments",
+    "recurring_tasks": "daily creates +1 day, weekly +7 days, monthly +30 days, once does NOT create next instance",
+    "tasks_range": "GET /api/tasks/range?start=...&end=... returns tasks in range correctly",
+    "story_abandon": "POST /api/stories/abandon ends active story; returns 404 when none active",
+    "villain_image": "GET returns image_data=null when uncached; returns cached value when manually inserted; POST endpoint registered (returns 422 for missing query param, not 404)",
+    "regression": "Full Wild West playthrough: 10 beats completed, 4 badges earned (First Blood, Bank Guardian, Town Defender, Sheriff of the West), 300 points total, story marked complete"
+  }
+}

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../src/contexts/AppContext';
@@ -17,9 +18,10 @@ import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { TaskStatus } from '../../src/types';
+import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
-  const { activeStory, todayTasks, loading, refreshAll } = useApp();
+  const { activeStory, todayTasks, streak, loading, refreshAll } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
@@ -32,15 +34,16 @@ export default function HomeScreen() {
 
   const handleCompleteTask = async (taskId: string) => {
     try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       const response = await completeTask(taskId);
       
-      // Show victory modal if there's victory data
       if (response.victory) {
         setVictoryData(response.victory);
         setVictoryModalVisible(true);
       }
       
-      // Refresh data
       await refreshAll();
     } catch (error) {
       console.error('Error completing task:', error);
@@ -82,18 +85,27 @@ export default function HomeScreen() {
             tintColor="#ffd700"
           />
         }
+        testID="home-scroll"
       >
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Quest Hero</Text>
-          <Text style={styles.headerSubtitle}>Transform Tasks into Adventures</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Quest Hero</Text>
+            <Text style={styles.headerSubtitle}>Transform tasks into adventures</Text>
+          </View>
+          {streak && streak.current_streak > 0 && (
+            <View style={styles.streakBadge} testID="streak-badge">
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <Text style={styles.streakNumber}>{streak.current_streak}</Text>
+              <Text style={styles.streakLabel}>day streak</Text>
+            </View>
+          )}
         </View>
 
         {/* Active Story Section */}
         {activeStory?.has_active_story ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📖 Your Current Story</Text>
+              <Text style={styles.sectionTitle}>📖 Your Adventure</Text>
               <Text style={styles.progressText}>
                 {activeStory.progress_percentage?.toFixed(0)}% Complete
               </Text>
@@ -105,7 +117,6 @@ export default function HomeScreen() {
                 Act {activeStory.progress?.current_act} of {activeStory.story?.total_acts}
               </Text>
               
-              {/* Progress Bar */}
               <View style={styles.progressBarContainer}>
                 <View
                   style={[
@@ -115,14 +126,12 @@ export default function HomeScreen() {
                 />
               </View>
 
-              {/* Current Beat */}
               {activeStory.current_beat && (
                 <View style={styles.currentBeatContainer}>
-                  <StoryBeatCard beat={activeStory.current_beat} />
+                  <StoryBeatCard beat={activeStory.current_beat} enableAIImage />
                 </View>
               )}
 
-              {/* Stats */}
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{activeStory.progress?.total_points}</Text>
@@ -150,6 +159,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 style={styles.startStoryButton}
                 onPress={() => router.push('/stories')}
+                testID="browse-stories-btn"
               >
                 <Text style={styles.startStoryButtonText}>Browse Stories</Text>
               </TouchableOpacity>
@@ -161,7 +171,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>✔️ Today's Tasks</Text>
-            <TouchableOpacity onPress={() => router.push('/tasks')}>
+            <TouchableOpacity onPress={() => router.push('/tasks')} testID="add-task-shortcut">
               <Ionicons name="add-circle" size={28} color="#ffd700" />
             </TouchableOpacity>
           </View>
@@ -186,13 +196,14 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Victory Modal */}
       {victoryData && (
         <VictoryModal
           visible={victoryModalVisible}
           victoryText={victoryData.victory_text}
           pointsEarned={victoryData.points_earned}
+          streakBonus={victoryData.streak_bonus}
           badgeEarned={victoryData.badge_earned}
+          villainName={victoryData.villain_name}
           onClose={handleCloseVictory}
         />
       )}
@@ -217,15 +228,42 @@ const styles = StyleSheet.create({
   header: {
     padding: 24,
     paddingTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#ffd700',
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  streakBadge: {
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fb923c',
+    minWidth: 80,
+  },
+  streakEmoji: {
+    fontSize: 22,
+  },
+  streakNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fb923c',
+  },
+  streakLabel: {
+    fontSize: 10,
     color: '#9ca3af',
   },
   section: {

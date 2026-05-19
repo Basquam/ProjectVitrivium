@@ -102,7 +102,254 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Build a gamified task management mobile app with story-driven experiences. Users complete daily tasks which advance epic story narratives, earning points and badges. MVP includes Wild West Redemption story with 3 acts and full game mechanics."
+user_problem_statement: "Build a gamified task management mobile app with story-driven experiences. Users complete daily tasks which advance epic story narratives, earning points and badges. Now expanded with 6 pre-built stories, AI villain image generation (Gemini Nano Banana), custom story creator, daily streaks, recurring tasks (daily/weekly/monthly), and haptic feedback."
+
+backend:
+  - task: "Story API endpoints (6 pre-built stories)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py, /app/backend/stories_data.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Initial Wild West story tested, all working."
+      - working: "NA"
+        agent: "main"
+        comment: "EXPANDED: Now includes 6 complete stories (Wild West, Space, Medieval, Detective, Zombie, Pirate). Each story has 3 acts with full beat progression. Refactored to separate stories_data.py file. Stories now include icon, color_primary, color_secondary for theming, plus image_prompt for AI image generation."
+
+  - task: "Task management API with recurring tasks"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Basic CRUD working after date serialization fix."
+      - working: "NA"
+        agent: "main"
+        comment: "EXPANDED: Added frequency field (once/daily/weekly/monthly). When recurring task completed, automatically creates next instance. Added /api/tasks/range endpoint for calendar views."
+
+  - task: "Story progression engine"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Full story playthrough verified - all beats advance correctly through 3 acts with proper rewards."
+
+  - task: "Custom Story Creator API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "NEW: POST /api/stories/custom accepts title, description, theme, icon, villains, num_acts (3-5). Template-based generation creates intro/challenge/victory beats per act. Last act gets FINALE type with bigger reward. DELETE /api/stories/custom/{id} for cleanup."
+
+  - task: "AI Villain Image Generation"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "NEW: Uses Gemini Nano Banana (gemini-3.1-flash-image-preview) via emergentintegrations. AGGRESSIVELY CACHED in MongoDB image_cache collection - each villain image generated only ONCE then served from cache forever. POST /api/villains/{name}/generate-image generates and caches, GET /api/villains/{name}/image returns cached only."
+
+  - task: "Streak system with bonuses"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "NEW: Daily streak tracker. Updates on task completion. Awards bonus points on victory beats: +10 for 3+ day streak, +25 for 7+ day streak. GET /api/streak returns current_streak, longest_streak, total_completions. Streak resets if user skips a day."
+
+  - task: "Achievement and stats system"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Basic stats verified - 300 points, 4 badges across full playthrough."
+      - working: "NA"
+        agent: "main"
+        comment: "EXPANDED: Stats now include current_streak and longest_streak. Aggregates across all completed and active progress."
+
+frontend:
+  - task: "App navigation structure"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/_layout.tsx, /app/frontend/app/(tabs)/_layout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Tab navigation with Home, Tasks, Stories, Profile. Plus /create-story modal route for custom story creation."
+
+  - task: "Home screen with streak display"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added: streak badge in header (🔥 X day streak), haptic feedback on task completion, AI image button on current beat."
+
+  - task: "Task management with recurring frequencies"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/tasks.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added: frequency picker (once/daily/weekly/monthly) when creating tasks. Haptic feedback on completion."
+
+  - task: "Story library with 6 themed stories"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/stories.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Shows all 6 pre-built stories + custom stories. Each story uses its own theme colors from backend. Custom stories tagged CUSTOM, can be deleted. Active story shown with banner, can be abandoned to start new one."
+
+  - task: "Custom Story Creator screen"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/create-story.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "NEW: Full form to create custom stories. Theme grid (fantasy/sci-fi/horror/adventure/mystery/superhero), acts picker (3/4/5), dynamic villain input fields, validation. Calls POST /api/stories/custom."
+
+  - task: "Profile with streak stats"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/profile.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added: streak card showing current and longest streak with fire gradient when streak > 0."
+
+  - task: "Victory modal with streak bonus + haptics"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/VictoryModal.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced: shows villain name, base points, streak bonus separately, badge earned. Triggers haptic notification on success."
+
+  - task: "Story beat with AI image generation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/StoryBeatCard.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "NEW: Auto-loads cached villain images on mount. If no image cached, shows 'Generate AI Image' button (only when enableAIImage prop is true). Generated images displayed as 180x180 with border."
+
+metadata:
+  created_by: "main_agent"
+  version: "2.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Story API endpoints (6 pre-built stories)"
+    - "Custom Story Creator API"
+    - "AI Villain Image Generation"
+    - "Streak system with bonuses"
+    - "Task management API with recurring tasks"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      EXPANSION COMPLETE - Added 6 new features to Quest Hero:
+      
+      NEW BACKEND FEATURES:
+      1. 5 NEW pre-built stories (Space, Medieval, Detective, Zombie, Pirate) - now 6 total
+      2. Custom Story Creator API - users can create their own stories with template-based generation
+      3. AI Villain Image Generation with aggressive caching (each villain image generated ONCE, then cached forever)
+      4. Streak system with bonus points (+10 at 3 days, +25 at 7 days)
+      5. Recurring tasks (daily/weekly/monthly) with auto-renewal
+      6. Date range API for calendar views
+      
+      NEW FRONTEND FEATURES:
+      - Streak badge on home screen
+      - Custom story creation screen with theme picker
+      - Haptic feedback on task completion
+      - AI image generation buttons on story beats
+      - Frequency picker for recurring tasks
+      - Theme-colored story cards (each story has its own gradient)
+      - Abandon story feature
+      - Delete custom story
+      
+      TESTING PRIORITY:
+      Please test these NEW backend features:
+      1. GET /api/stories - should return 6 stories total with proper theming
+      2. POST /api/stories/custom - create custom story, verify acts/beats generated
+      3. DELETE /api/stories/custom/{id} - cleanup
+      4. POST /api/tasks with frequency=daily - complete task, verify next instance created
+      5. PUT /api/tasks/{id}/complete - verify streak updates on completion
+      6. GET /api/streak - verify streak data
+      7. AI image generation: skip live test (costs credits) but verify endpoint exists. Use mocked endpoint test or verify route registered.
+      8. Verify all stories have icon, color_primary, color_secondary fields
+      
+      EMERGENT LLM KEY is configured in backend/.env for AI image generation.
+      
+      DO NOT FIX the date serialization issue - already fixed in previous round.
+      DO NOT TEST FRONTEND yet - waiting for backend confirmation first.
 
 backend:
   - task: "Story API endpoints"
