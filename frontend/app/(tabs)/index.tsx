@@ -8,17 +8,27 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  Dimensions,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
+import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useApp } from '../../src/contexts/AppContext';
-import StoryBeatCard from '../../src/components/StoryBeatCard';
-import TaskCard from '../../src/components/TaskCard';
 import VictoryModal from '../../src/components/VictoryModal';
+import QuestCard from '../../src/components/QuestCard';
+import JourneyMap from '../../src/components/JourneyMap';
+import GlassPanel from '../../src/components/GlassPanel';
 import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { TaskStatus } from '../../src/types';
+import { TaskStatus, BeatType } from '../../src/types';
+import { getTheme, GLOBAL_THEME, DEFAULT_THEME } from '../../src/theme';
 import * as Haptics from 'expo-haptics';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HERO_HEIGHT = SCREEN_HEIGHT * 0.45;
 
 export default function HomeScreen() {
   const { activeStory, todayTasks, streak, loading, refreshAll } = useApp();
@@ -41,15 +51,13 @@ export default function HomeScreen() {
   const handleCompleteTask = async (taskId: string) => {
     try {
       if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
       const response = await completeTask(taskId);
-      
       if (response.victory) {
         setVictoryData(response.victory);
         setVictoryModalVisible(true);
       }
-      
       await refreshAll();
     } catch (error) {
       console.error('Error completing task:', error);
@@ -65,142 +73,246 @@ export default function HomeScreen() {
     }
   };
 
-  const handleCloseVictory = () => {
-    setVictoryModalVisible(false);
-    setVictoryData(null);
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ffd700" />
+        <ActivityIndicator size="large" color={GLOBAL_THEME.gold} />
       </View>
     );
   }
 
   const pendingTasks = todayTasks.filter(t => t.status === TaskStatus.PENDING);
+  const completedToday = todayTasks.filter(t => t.status === TaskStatus.COMPLETED);
+  const hasStory = activeStory?.has_active_story;
+  const theme = hasStory ? getTheme(activeStory.story?.theme) : DEFAULT_THEME;
+  const currentBeat = activeStory?.current_beat;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#ffd700"
-          />
-        }
-        testID="home-scroll"
-      >
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Quest Hero</Text>
-            <Text style={styles.headerSubtitle}>Transform tasks into adventures</Text>
-          </View>
-          {streak && streak.current_streak > 0 && (
-            <View style={styles.streakBadge} testID="streak-badge">
-              <Text style={styles.streakEmoji}>🔥</Text>
-              <Text style={styles.streakNumber}>{streak.current_streak}</Text>
-              <Text style={styles.streakLabel}>day streak</Text>
-            </View>
-          )}
-        </View>
+    <View style={styles.root} testID="home-screen">
+      {/* CINEMATIC HERO BACKGROUND */}
+      <View style={styles.heroContainer}>
+        <Image
+          source={{ uri: theme.imageUrl }}
+          style={styles.heroImage}
+          contentFit="cover"
+          transition={500}
+        />
+        {/* Theme tint overlay */}
+        <View style={[styles.heroTint, { backgroundColor: theme.tintOverlay }]} />
+        {/* Bottom fade to black */}
+        <LinearGradient
+          colors={['transparent', 'rgba(10,10,10,0.4)', 'rgba(10,10,10,0.85)', GLOBAL_THEME.background]}
+          locations={[0, 0.5, 0.8, 1]}
+          style={styles.heroFade}
+        />
+      </View>
 
-        {/* Active Story Section */}
-        {activeStory?.has_active_story ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📖 Your Adventure</Text>
-              <Text style={styles.progressText}>
-                {activeStory.progress_percentage?.toFixed(0)}% Complete
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top bar: Streak badge */}
+          <Animated.View entering={FadeIn.duration(600)} style={styles.topBar}>
+            <View style={styles.topBarLeft}>
+              <Text style={[styles.kicker, { color: theme.primary }]}>
+                {hasStory ? `ACT ${activeStory.progress?.current_act} • ${theme.name.toUpperCase()}` : 'CHOOSE YOUR ADVENTURE'}
               </Text>
             </View>
-            
-            <View style={styles.storyCard}>
-              <Text style={styles.storyTitle}>{activeStory.story?.title}</Text>
-              <Text style={styles.storyAct}>
-                Act {activeStory.progress?.current_act} of {activeStory.story?.total_acts}
-              </Text>
-              
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    { width: `${activeStory.progress_percentage}%` },
-                  ]}
-                />
-              </View>
+            {streak && streak.current_streak > 0 && (
+              <GlassPanel
+                style={styles.streakBadge}
+                borderColor="rgba(251, 146, 60, 0.5)"
+                testID="streak-badge"
+              >
+                <Text style={styles.streakEmoji}>🔥</Text>
+                <Text style={styles.streakNumber}>{streak.current_streak}</Text>
+              </GlassPanel>
+            )}
+          </Animated.View>
 
-              {activeStory.current_beat && (
-                <View style={styles.currentBeatContainer}>
-                  <StoryBeatCard beat={activeStory.current_beat} enableAIImage />
+          {hasStory ? (
+            <>
+              {/* STORY TITLE */}
+              <Animated.View entering={FadeInDown.delay(100).duration(700)} style={styles.titleBlock}>
+                <Text style={[styles.storyTitle, { fontFamily: theme.fontFamily }]}>
+                  {activeStory.story?.title}
+                </Text>
+                <View style={styles.titleUnderline}>
+                  <View style={[styles.titleUnderlineFill, { backgroundColor: theme.primary, width: `${activeStory.progress_percentage || 0}%` }]} />
                 </View>
+                <Text style={styles.progressLabel}>
+                  {activeStory.progress_percentage?.toFixed(0)}% COMPLETE
+                </Text>
+              </Animated.View>
+
+              {/* CURRENT BEAT - DRAMATIC REVEAL */}
+              {currentBeat && (
+                <Animated.View 
+                  entering={FadeInUp.delay(300).duration(800).springify()} 
+                  style={styles.beatSection}
+                >
+                  <GlassPanel
+                    intensity={40}
+                    borderColor={theme.primary}
+                    style={styles.beatPanel}
+                  >
+                    {/* Beat type ribbon */}
+                    <View style={[styles.beatRibbon, { backgroundColor: theme.primary }]}>
+                      <Text style={styles.beatRibbonText}>
+                        {getBeatLabel(currentBeat.type)}
+                      </Text>
+                      {currentBeat.villain_name ? (
+                        <Text style={styles.villainTag}>
+                          ⚔ {currentBeat.villain_name}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    <View style={styles.beatBody}>
+                      <Text style={styles.beatEmoji}>{currentBeat.image_url}</Text>
+                      <Text style={[styles.beatTitle, { fontFamily: theme.fontFamily }]}>
+                        {currentBeat.title}
+                      </Text>
+                      <Text style={styles.beatText}>{currentBeat.text}</Text>
+                      
+                      {currentBeat.reward_points > 0 && (
+                        <View style={[styles.rewardChip, { borderColor: theme.primary }]}>
+                          <Ionicons name="trophy" size={14} color={theme.primary} />
+                          <Text style={[styles.rewardChipText, { color: theme.primary }]}>
+                            +{currentBeat.reward_points} XP
+                            {currentBeat.reward_badge ? ` • 🎖 ${currentBeat.reward_badge}` : ''}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </GlassPanel>
+                </Animated.View>
               )}
 
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{activeStory.progress?.total_points}</Text>
-                  <Text style={styles.statLabel}>Points</Text>
+              {/* HERO STATS */}
+              <Animated.View entering={FadeInUp.delay(500).duration(600)} style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <Text style={[styles.statValue, { color: theme.primary }]}>
+                    {activeStory.progress?.total_points || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>XP EARNED</Text>
                 </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{activeStory.progress?.tasks_completed}</Text>
-                  <Text style={styles.statLabel}>Tasks Done</Text>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <Text style={[styles.statValue, { color: theme.primary }]}>
+                    {activeStory.progress?.tasks_completed || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>QUESTS DONE</Text>
                 </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{activeStory.progress?.rewards_earned.length}</Text>
-                  <Text style={styles.statLabel}>Badges</Text>
+                <View style={styles.statDivider} />
+                <View style={styles.statBox}>
+                  <Text style={[styles.statValue, { color: theme.primary }]}>
+                    {activeStory.progress?.rewards_earned.length || 0}
+                  </Text>
+                  <Text style={styles.statLabel}>BADGES</Text>
                 </View>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.noStoryCard}>
-              <Text style={styles.noStoryEmoji}>🏰</Text>
-              <Text style={styles.noStoryTitle}>No Active Story</Text>
-              <Text style={styles.noStoryText}>
-                Start an epic adventure to make your tasks meaningful!
+              </Animated.View>
+
+              {/* JOURNEY MAP */}
+              {activeStory.story && (
+                <Animated.View entering={FadeInUp.delay(700).duration(600)} style={styles.section}>
+                  <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily }]}>
+                    Your Journey
+                  </Text>
+                  <JourneyMap 
+                    story={activeStory.story} 
+                    currentAct={activeStory.progress?.current_act || 1}
+                    currentBeat={activeStory.progress?.current_beat || 0}
+                    themeColor={theme.primary}
+                  />
+                </Animated.View>
+              )}
+            </>
+          ) : (
+            // NO STORY - CALL TO ADVENTURE
+            <Animated.View entering={FadeInDown.delay(200).duration(700)} style={styles.noStorySection}>
+              <Text style={[styles.heroTitle, { fontFamily: theme.fontFamily }]}>
+                QUEST HERO
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                Transform your tasks into legendary tales
               </Text>
               <TouchableOpacity
-                style={styles.startStoryButton}
+                style={[styles.ctaButton, { borderColor: theme.primary }]}
                 onPress={() => router.push('/stories')}
                 testID="browse-stories-btn"
               >
-                <Text style={styles.startStoryButtonText}>Browse Stories</Text>
+                <Text style={[styles.ctaText, { color: theme.primary }]}>
+                  CHOOSE YOUR ADVENTURE
+                </Text>
+                <Ionicons name="arrow-forward" size={18} color={theme.primary} />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
+          {/* TODAY'S QUESTS */}
+          <Animated.View entering={FadeInUp.delay(800).duration(600)} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { fontFamily: theme.fontFamily }]}>
+                Today's Quests
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/tasks')}
+                style={styles.addBtn}
+                testID="add-task-shortcut"
+              >
+                <Ionicons name="add" size={20} color={theme.primary} />
+                <Text style={[styles.addBtnText, { color: theme.primary }]}>NEW</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
 
-        {/* Today's Tasks Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>✔️ Today's Tasks</Text>
-            <TouchableOpacity onPress={() => router.push('/tasks')} testID="add-task-shortcut">
-              <Ionicons name="add-circle" size={28} color="#ffd700" />
-            </TouchableOpacity>
-          </View>
-
-          {pendingTasks.length === 0 ? (
-            <View style={styles.emptyTasksCard}>
-              <Text style={styles.emptyTasksEmoji}>🎉</Text>
-              <Text style={styles.emptyTasksText}>
-                No pending tasks! Add some to continue your adventure.
-              </Text>
-            </View>
-          ) : (
-            pendingTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onComplete={handleCompleteTask}
-                onDelete={handleDeleteTask}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
+            {pendingTasks.length === 0 && completedToday.length === 0 ? (
+              <GlassPanel style={styles.emptyState} borderColor={GLOBAL_THEME.border}>
+                <Text style={styles.emptyEmoji}>📜</Text>
+                <Text style={styles.emptyText}>
+                  No quests for today. Forge new ones to continue your saga.
+                </Text>
+              </GlassPanel>
+            ) : (
+              <>
+                {pendingTasks.map((task, idx) => (
+                  <Animated.View key={task.id} entering={FadeInDown.delay(900 + idx * 80).duration(500)}>
+                    <QuestCard
+                      task={task}
+                      onComplete={handleCompleteTask}
+                      onDelete={handleDeleteTask}
+                      themeColor={theme.primary}
+                    />
+                  </Animated.View>
+                ))}
+                {completedToday.length > 0 && (
+                  <>
+                    <Text style={styles.completedLabel}>✓ Conquered Today</Text>
+                    {completedToday.map((task) => (
+                      <QuestCard
+                        key={task.id}
+                        task={task}
+                        onComplete={handleCompleteTask}
+                        onDelete={handleDeleteTask}
+                        themeColor={theme.primary}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
 
       {victoryData && (
         <VictoryModal
@@ -210,192 +322,301 @@ export default function HomeScreen() {
           streakBonus={victoryData.streak_bonus}
           badgeEarned={victoryData.badge_earned}
           villainName={victoryData.villain_name}
-          onClose={handleCloseVictory}
+          themeColor={theme.primary}
+          themeFont={theme.fontFamily}
+          onClose={() => {
+            setVictoryModalVisible(false);
+            setVictoryData(null);
+          }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
+function getBeatLabel(type: BeatType | string) {
+  switch (type) {
+    case BeatType.INTRO: return 'CHAPTER OPENS';
+    case BeatType.CHALLENGE: return 'CHALLENGE';
+    case BeatType.VICTORY: return 'VICTORY';
+    case BeatType.PLOT_TWIST: return 'PLOT TWIST';
+    case BeatType.FINALE: return 'FINALE';
+    default: return 'STORY';
+  }
+}
+
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: GLOBAL_THEME.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+    backgroundColor: GLOBAL_THEME.background,
+  },
+  heroContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HERO_HEIGHT,
+    overflow: 'hidden',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroTint: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: HERO_HEIGHT,
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
-  header: {
-    padding: 24,
-    paddingTop: 16,
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
-  headerLeft: {
+  topBarLeft: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
+  kicker: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
   streakBadge: {
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#fb923c',
-    minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+    borderRadius: 999,
   },
   streakEmoji: {
-    fontSize: 22,
+    fontSize: 14,
   },
   streakNumber: {
-    fontSize: 22,
-    fontWeight: 'bold',
     color: '#fb923c',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
-  streakLabel: {
+  titleBlock: {
+    paddingHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  storyTitle: {
+    fontSize: 38,
+    color: GLOBAL_THEME.textPrimary,
+    letterSpacing: -0.5,
+    lineHeight: 44,
+  },
+  titleUnderline: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 999,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  titleUnderlineFill: {
+    height: '100%',
+  },
+  progressLabel: {
     fontSize: 10,
-    color: '#9ca3af',
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginTop: 6,
+  },
+  beatSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  beatPanel: {
+    overflow: 'hidden',
+  },
+  beatRibbon: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  beatRibbonText: {
+    color: '#0A0A0A',
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 2,
+  },
+  villainTag: {
+    color: '#0A0A0A',
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  beatBody: {
+    padding: 20,
+  },
+  beatEmoji: {
+    fontSize: 44,
+    marginBottom: 8,
+  },
+  beatTitle: {
+    fontSize: 24,
+    color: GLOBAL_THEME.textPrimary,
+    marginBottom: 8,
+    lineHeight: 30,
+  },
+  beatText: {
+    fontSize: 15,
+    color: GLOBAL_THEME.textPrimary,
+    lineHeight: 23,
+    opacity: 0.92,
+  },
+  rewardChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  rewardChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    marginBottom: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: GLOBAL_THEME.border,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: GLOBAL_THEME.border,
+  },
+  statValue: {
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  statLabel: {
+    fontSize: 9,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginTop: 4,
   },
   section: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
+    fontSize: 22,
+    color: GLOBAL_THEME.textPrimary,
+    letterSpacing: -0.3,
   },
-  progressText: {
-    fontSize: 14,
-    color: '#10b981',
-    fontWeight: '600',
-  },
-  storyCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  storyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 4,
-  },
-  storyAct: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 16,
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#374151',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#ffd700',
-  },
-  currentBeatContainer: {
-    marginTop: 8,
-  },
-  statsRow: {
+  addBtn: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#374151',
-  },
-  statItem: {
     alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffd700',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  noStoryCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: 'rgba(244, 196, 48, 0.4)',
   },
-  noStoryEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+  addBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  noStoryTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
+  noStorySection: {
+    paddingHorizontal: 24,
+    paddingVertical: 60,
+    alignItems: 'center',
+  },
+  heroTitle: {
+    fontSize: 56,
+    color: GLOBAL_THEME.textPrimary,
+    textAlign: 'center',
+    letterSpacing: -1,
     marginBottom: 8,
   },
-  noStoryText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  startStoryButton: {
-    backgroundColor: '#ffd700',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  startStoryButtonText: {
-    color: '#0a0a0a',
+  heroSubtitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: GLOBAL_THEME.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
   },
-  emptyTasksCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 12,
-    padding: 24,
+  ctaButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#374151',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 999,
+    borderWidth: 1.5,
   },
-  emptyTasksEmoji: {
-    fontSize: 48,
+  ctaText: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyEmoji: {
+    fontSize: 40,
     marginBottom: 12,
   },
-  emptyTasksText: {
+  emptyText: {
+    color: GLOBAL_THEME.textSecondary,
     fontSize: 14,
-    color: '#9ca3af',
     textAlign: 'center',
+    lineHeight: 20,
+  },
+  completedLabel: {
+    fontSize: 11,
+    color: GLOBAL_THEME.textMuted,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginTop: 16,
+    marginBottom: 8,
   },
 });

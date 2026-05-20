@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Haptics from 'expo-haptics';
+import { GLOBAL_THEME } from '../theme';
 
 interface VictoryModalProps {
   visible: boolean;
@@ -19,6 +20,8 @@ interface VictoryModalProps {
   streakBonus?: number;
   badgeEarned?: string;
   villainName?: string;
+  themeColor?: string;
+  themeFont?: string;
   onClose: () => void;
 }
 
@@ -29,30 +32,40 @@ const VictoryModal: React.FC<VictoryModalProps> = ({
   streakBonus = 0,
   badgeEarned,
   villainName,
+  themeColor = GLOBAL_THEME.gold,
+  themeFont,
   onClose,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const confettiRef = useRef<any>(null);
 
   useEffect(() => {
     if (visible) {
-      // Haptic feedback
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 40,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
       
       setTimeout(() => {
         confettiRef.current?.start();
-      }, 100);
+      }, 200);
     } else {
       scaleAnim.setValue(0);
+      fadeAnim.setValue(0);
     }
   }, [visible]);
 
@@ -65,45 +78,62 @@ const VictoryModal: React.FC<VictoryModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         <Animated.View
           style={[
             styles.modalContent,
-            {
+            { 
               transform: [{ scale: scaleAnim }],
+              borderColor: themeColor,
             },
           ]}
         >
-          <Text style={styles.emoji}>🎉</Text>
-          <Text style={styles.title}>VICTORY!</Text>
+          {/* Glow effect */}
+          <View style={[styles.glow, { backgroundColor: themeColor, opacity: 0.15 }]} />
+          
+          <Text style={styles.emoji}>⚔️</Text>
+          <Text style={[styles.title, themeFont ? { fontFamily: themeFont } : null, { color: themeColor }]}>
+            VICTORY
+          </Text>
           
           {villainName && (
-            <Text style={styles.subtitle}>Defeated {villainName}</Text>
+            <View style={[styles.villainBox, { borderColor: themeColor }]}>
+              <Text style={styles.villainLabel}>DEFEATED</Text>
+              <Text style={styles.villainName}>{villainName}</Text>
+            </View>
           )}
           
-          <View style={styles.pointsContainer}>
-            <Text style={styles.pointsText}>+{totalPoints}</Text>
-            <Text style={styles.pointsLabel}>POINTS</Text>
-            {streakBonus > 0 && (
-              <Text style={styles.streakBonus}>🔥 +{streakBonus} streak bonus!</Text>
-            )}
+          <View style={styles.pointsRow}>
+            <Text style={[styles.pointsText, { color: themeColor }]}>+{totalPoints}</Text>
+            <Text style={styles.pointsLabel}>XP</Text>
           </View>
+          
+          {streakBonus > 0 && (
+            <View style={styles.streakBonusBox}>
+              <Text style={styles.streakBonusText}>
+                🔥 +{streakBonus} streak bonus
+              </Text>
+            </View>
+          )}
 
           {badgeEarned && (
-            <View style={styles.badgeContainer}>
+            <View style={[styles.badgeContainer, { borderColor: themeColor }]}>
               <Text style={styles.badgeEmoji}>🎖️</Text>
-              <Text style={styles.badgeText}>{badgeEarned}</Text>
+              <View>
+                <Text style={styles.badgeLabel}>BADGE UNLOCKED</Text>
+                <Text style={[styles.badgeName, { color: themeColor }]}>{badgeEarned}</Text>
+              </View>
             </View>
           )}
 
           <Text style={styles.victoryText}>{victoryText}</Text>
 
           <TouchableOpacity 
-            style={styles.button} 
+            style={[styles.button, { backgroundColor: themeColor }]}
             onPress={onClose}
             testID="victory-continue-btn"
           >
-            <Text style={styles.buttonText}>Continue Your Journey</Text>
+            <Text style={styles.buttonText}>CONTINUE THE STORY</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -113,8 +143,9 @@ const VictoryModal: React.FC<VictoryModalProps> = ({
           origin={{ x: Dimensions.get('window').width / 2, y: -10 }}
           autoStart={false}
           fadeOut
+          colors={[themeColor, '#fff', GLOBAL_THEME.gold]}
         />
-      </View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -122,98 +153,127 @@ const VictoryModal: React.FC<VictoryModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#101010',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
     width: '100%',
     maxWidth: 400,
     borderWidth: 2,
-    borderColor: '#ffd700',
+    overflow: 'hidden',
+  },
+  glow: {
+    position: 'absolute',
+    top: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
   },
   emoji: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 56,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 8,
+    fontSize: 48,
+    fontWeight: '900',
+    marginBottom: 16,
     textAlign: 'center',
+    letterSpacing: 4,
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#fbbf24',
-    marginBottom: 16,
-    fontWeight: '600',
-  },
-  pointsContainer: {
-    backgroundColor: '#2a2a3e',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+  villainBox: {
     alignItems: 'center',
-    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  villainLabel: {
+    fontSize: 10,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  villainName: {
+    fontSize: 16,
+    color: GLOBAL_THEME.textPrimary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  pointsRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginBottom: 8,
   },
   pointsText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#4ade80',
+    fontSize: 56,
+    fontWeight: '900',
   },
   pointsLabel: {
     fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 4,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
-  streakBonus: {
-    fontSize: 13,
+  streakBonusBox: {
+    marginBottom: 16,
+  },
+  streakBonusText: {
     color: '#fb923c',
-    marginTop: 8,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 13,
   },
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a3e',
+    gap: 12,
+    borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
   },
   badgeEmoji: {
-    fontSize: 24,
-    marginRight: 8,
+    fontSize: 32,
   },
-  badgeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fbbf24',
+  badgeLabel: {
+    fontSize: 9,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  badgeName: {
+    fontSize: 14,
+    fontWeight: '800',
   },
   victoryText: {
-    fontSize: 16,
-    color: '#e5e7eb',
+    fontSize: 14,
+    color: GLOBAL_THEME.textPrimary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    lineHeight: 22,
+    marginBottom: 28,
+    opacity: 0.9,
+    fontStyle: 'italic',
   },
   button: {
-    backgroundColor: '#ffd700',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 999,
+    paddingVertical: 14,
     paddingHorizontal: 32,
     width: '100%',
   },
   buttonText: {
-    color: '#1a1a2e',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#0A0A0A',
+    fontSize: 13,
+    fontWeight: '900',
     textAlign: 'center',
+    letterSpacing: 2,
   },
 });
 

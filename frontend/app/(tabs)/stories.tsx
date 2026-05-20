@@ -5,17 +5,27 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { getStories, startStory, abandonStory, deleteCustomStory } from '../../src/services/api';
 import { Story } from '../../src/types';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../src/contexts/AppContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { getTheme, getThemeForCustomStory, GLOBAL_THEME } from '../../src/theme';
+import { confirmAction, notify } from '../../src/utils/confirm';
+import * as Haptics from 'expo-haptics';
+import GlassPanel from '../../src/components/GlassPanel';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_HEIGHT = 280;
 
 export default function StoriesScreen() {
   const [stories, setStories] = useState<Story[]>([]);
@@ -36,7 +46,6 @@ export default function StoriesScreen() {
       setStories(data);
     } catch (error) {
       console.error('Error loading stories:', error);
-      Alert.alert('Error', 'Failed to load stories');
     } finally {
       setLoading(false);
     }
@@ -48,32 +57,32 @@ export default function StoriesScreen() {
     setRefreshing(false);
   };
 
-  const handleStartStory = async (storyId: string) => {
+  const isCustomStory = (story: Story) => story.id.startsWith('custom-');
+
+  const handleStartStory = (storyId: string, storyTitle: string) => {
     if (activeStory?.has_active_story) {
-      Alert.alert(
-        'Active Story',
-        'You already have an active story. Abandon it first to start a new one.',
-        [{ text: 'OK' }]
+      notify(
+        'A Story Already Begins',
+        `You are mid-adventure in "${activeStory.progress?.story_title}". Abandon it first to start a new tale.`
       );
       return;
     }
-
-    Alert.alert(
-      'Start Adventure',
-      'Ready to begin this epic journey?',
+    confirmAction(
+      'Begin the Adventure?',
+      `Ready to step into "${storyTitle}"?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Not now', style: 'cancel' },
         {
-          text: 'Start',
+          text: 'Begin',
+          style: 'default',
           onPress: async () => {
             try {
+              if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
               await startStory(storyId);
               await refreshAll();
-              Alert.alert('Success', 'Your adventure begins!');
               router.push('/');
-            } catch (error) {
-              console.error('Error starting story:', error);
-              Alert.alert('Error', 'Failed to start story');
+            } catch (error: any) {
+              notify('Error', error.response?.data?.detail || 'Could not start adventure');
             }
           },
         },
@@ -82,11 +91,11 @@ export default function StoriesScreen() {
   };
 
   const handleAbandonStory = () => {
-    Alert.alert(
-      'Abandon Story',
-      'Are you sure? Your progress will be saved but you cannot continue this story.',
+    confirmAction(
+      'Abandon Your Story?',
+      'Your progress will be saved but you cannot continue this tale.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stay', style: 'cancel' },
         {
           text: 'Abandon',
           style: 'destructive',
@@ -94,9 +103,8 @@ export default function StoriesScreen() {
             try {
               await abandonStory();
               await refreshAll();
-              Alert.alert('Done', 'Story abandoned. Pick a new adventure!');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to abandon story');
+            } catch {
+              notify('Error', 'Could not abandon story');
             }
           },
         },
@@ -105,11 +113,11 @@ export default function StoriesScreen() {
   };
 
   const handleDeleteCustomStory = (storyId: string) => {
-    Alert.alert(
-      'Delete Story',
-      'Are you sure you want to delete this custom story?',
+    confirmAction(
+      'Delete Custom Story?',
+      'This cannot be undone.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -117,8 +125,8 @@ export default function StoriesScreen() {
             try {
               await deleteCustomStory(storyId);
               await loadStories();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete story');
+            } catch {
+              notify('Error', 'Could not delete story');
             }
           },
         },
@@ -129,130 +137,161 @@ export default function StoriesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ffd700" />
+        <ActivityIndicator size="large" color={GLOBAL_THEME.gold} />
       </View>
     );
   }
 
-  const isCustomStory = (story: Story) => story.id.startsWith('custom-');
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']} testID="stories-screen">
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Story Library</Text>
-          <Text style={styles.headerSubtitle}>
-            Choose your adventure
-          </Text>
+          <Text style={styles.kicker}>WORLDS</Text>
+          <Text style={styles.title}>Choose Your Saga</Text>
         </View>
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => router.push('/create-story')}
           testID="create-custom-story-btn"
         >
-          <Ionicons name="add" size={20} color="#0a0a0a" />
-          <Text style={styles.createButtonText}>Custom</Text>
+          <Ionicons name="create" size={16} color="#0A0A0A" />
+          <Text style={styles.createButtonText}>FORGE</Text>
         </TouchableOpacity>
       </View>
 
       {activeStory?.has_active_story && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.abandonBanner}
           onPress={handleAbandonStory}
           testID="abandon-story-btn"
         >
-          <Ionicons name="warning" size={16} color="#ef4444" />
+          <Ionicons name="warning" size={14} color="#fca5a5" />
           <Text style={styles.abandonText}>
-            Currently playing: {activeStory.progress?.story_title}. Tap to abandon.
+            Currently in <Text style={styles.abandonHighlight}>{activeStory.progress?.story_title}</Text> — tap to abandon
           </Text>
         </TouchableOpacity>
       )}
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffd700" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GLOBAL_THEME.gold} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {stories.map((story) => {
+        {stories.map((story, idx) => {
           const isActive = activeStory?.has_active_story && activeStory.progress?.story_id === story.id;
-          const colors: [string, string] = [story.color_primary || '#2563eb', story.color_secondary || '#1e40af'];
+          const isCustom = isCustomStory(story);
+          // Use built-in theme for built-in stories, mapped theme for custom
+          const theme = isCustom ? getThemeForCustomStory(story.theme) : getTheme(story.theme);
 
           return (
-            <View key={story.id} style={styles.storyCardContainer}>
-              <LinearGradient
-                colors={colors}
-                style={styles.storyCard}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.storyHeader}>
-                  <View style={styles.themeRow}>
-                    <Text style={styles.storyIcon}>{story.icon}</Text>
-                    <View style={styles.themeTag}>
-                      <Text style={styles.themeText}>{story.theme.toUpperCase()}</Text>
-                    </View>
-                    {isCustomStory(story) && (
+            <Animated.View
+              key={story.id}
+              entering={FadeInDown.delay(idx * 80).duration(500)}
+              style={styles.storyCardWrap}
+            >
+              <View style={styles.storyCard}>
+                {/* Background image */}
+                <Image
+                  source={{ uri: theme.imageUrl }}
+                  style={styles.storyBg}
+                  contentFit="cover"
+                  transition={300}
+                />
+                {/* Color tint */}
+                <View style={[styles.storyTint, { backgroundColor: theme.tintOverlay }]} />
+                {/* Dark gradient for legibility */}
+                <LinearGradient
+                  colors={['rgba(10,10,10,0.2)', 'rgba(10,10,10,0.7)', 'rgba(10,10,10,0.95)']}
+                  locations={[0, 0.5, 1]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+
+                {/* Top tags */}
+                <View style={styles.cardTopRow}>
+                  <View style={[styles.themeTag, { borderColor: theme.primary }]}>
+                    <Text style={[styles.themeTagText, { color: theme.primary }]}>
+                      {story.theme.toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.cardTopRight}>
+                    {isCustom && (
                       <View style={styles.customTag}>
-                        <Text style={styles.customText}>CUSTOM</Text>
+                        <Ionicons name="sparkles" size={10} color="#0A0A0A" />
+                        <Text style={styles.customTagText}>CUSTOM</Text>
+                      </View>
+                    )}
+                    {isActive && (
+                      <View style={[styles.activeTag, { backgroundColor: theme.primary }]}>
+                        <View style={styles.activeDot} />
+                        <Text style={styles.activeTagText}>ACTIVE</Text>
                       </View>
                     )}
                   </View>
-                  {isActive && (
-                    <View style={styles.activeTag}>
-                      <Ionicons name="play-circle" size={16} color="#fff" />
-                      <Text style={styles.activeText}>ACTIVE</Text>
+                </View>
+
+                {/* Bottom info */}
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardIcon}>{story.icon || theme.emoji}</Text>
+                  <Text style={[styles.cardTitle, { fontFamily: theme.fontFamily }]}>
+                    {story.title}
+                  </Text>
+                  <Text style={styles.cardDescription} numberOfLines={2}>
+                    {story.description}
+                  </Text>
+                  
+                  <View style={styles.cardStats}>
+                    <View style={styles.statCol}>
+                      <Text style={[styles.statValue, { color: theme.primary }]}>{story.total_acts}</Text>
+                      <Text style={styles.statLabel}>ACTS</Text>
                     </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statCol}>
+                      <Text style={[styles.statValue, { color: theme.primary }]}>{story.total_points}</Text>
+                      <Text style={styles.statLabel}>MAX XP</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statCol}>
+                      <Text style={[styles.statValue, { color: theme.primary }]}>
+                        {story.acts.reduce((acc, act) => acc + act.beats.length, 0)}
+                      </Text>
+                      <Text style={styles.statLabel}>BEATS</Text>
+                    </View>
+                  </View>
+
+                  {isActive ? (
+                    <View style={[styles.actionButton, styles.activeButton, { borderColor: theme.primary }]}>
+                      <Ionicons name="play-circle" size={16} color={theme.primary} />
+                      <Text style={[styles.actionText, { color: theme.primary }]}>
+                        IN PROGRESS
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                      onPress={() => handleStartStory(story.id, story.title)}
+                      testID={`start-story-${story.id}`}
+                    >
+                      <Text style={styles.actionTextPrimary}>BEGIN ADVENTURE</Text>
+                      <Ionicons name="arrow-forward" size={16} color="#0A0A0A" />
+                    </TouchableOpacity>
+                  )}
+
+                  {isCustom && !isActive && (
+                    <TouchableOpacity
+                      style={styles.deleteCustom}
+                      onPress={() => handleDeleteCustomStory(story.id)}
+                      testID={`delete-custom-${story.id}`}
+                    >
+                      <Ionicons name="trash-outline" size={14} color={GLOBAL_THEME.textMuted} />
+                      <Text style={styles.deleteCustomText}>Remove</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
-
-                <Text style={styles.storyTitle}>{story.title}</Text>
-                <Text style={styles.storyDescription}>{story.description}</Text>
-
-                <View style={styles.storyStats}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{story.total_acts}</Text>
-                    <Text style={styles.statLabel}>Acts</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{story.total_points}</Text>
-                    <Text style={styles.statLabel}>Max Points</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>
-                      {story.acts.reduce((acc, act) => acc + act.beats.length, 0)}
-                    </Text>
-                    <Text style={styles.statLabel}>Beats</Text>
-                  </View>
-                </View>
-
-                {isActive ? (
-                  <View style={styles.activeButton}>
-                    <Text style={styles.activeButtonText}>Currently Playing</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={() => handleStartStory(story.id)}
-                    testID={`start-story-${story.id}`}
-                  >
-                    <Text style={[styles.startButtonText, { color: story.color_secondary || '#1e40af' }]}>
-                      Start Adventure
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {isCustomStory(story) && !isActive && (
-                  <TouchableOpacity 
-                    style={styles.deleteButton} 
-                    onPress={() => handleDeleteCustomStory(story.id)}
-                  >
-                    <Ionicons name="trash" size={16} color="#fff" />
-                    <Text style={styles.deleteButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                )}
-              </LinearGradient>
-            </View>
+              </View>
+            </Animated.View>
           );
         })}
       </ScrollView>
@@ -263,192 +302,231 @@ export default function StoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: GLOBAL_THEME.background,
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: GLOBAL_THEME.background,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
   },
   header: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
+  kicker: {
+    fontSize: 10,
+    color: GLOBAL_THEME.gold,
+    fontWeight: '900',
+    letterSpacing: 3,
     marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#9ca3af',
+  title: {
+    fontSize: 32,
+    color: GLOBAL_THEME.textPrimary,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   createButton: {
-    backgroundColor: '#ffd700',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    backgroundColor: GLOBAL_THEME.gold,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
   createButtonText: {
-    color: '#0a0a0a',
-    fontWeight: 'bold',
-    fontSize: 13,
+    color: '#0A0A0A',
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 1.5,
   },
   abandonBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#7f1d1d',
-    marginHorizontal: 16,
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    borderColor: 'rgba(220, 38, 38, 0.4)',
+    borderWidth: 1,
+    marginHorizontal: 24,
     marginBottom: 12,
-    padding: 10,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   abandonText: {
-    color: '#fecaca',
+    color: '#fca5a5',
     fontSize: 12,
     flex: 1,
   },
+  abandonHighlight: {
+    fontWeight: '700',
+    color: '#fecaca',
+  },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 16,
   },
-  storyCardContainer: {
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 120,
+  },
+  storyCardWrap: {
     marginBottom: 16,
   },
   storyCard: {
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#374151',
+    height: CARD_HEIGHT,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: GLOBAL_THEME.surface,
   },
-  storyHeader: {
+  storyBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  storyTint: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    padding: 14,
   },
-  themeRow: {
+  cardTopRight: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
   },
-  storyIcon: {
-    fontSize: 28,
-  },
   themeTag: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 6,
-    paddingVertical: 4,
     paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  themeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#fff',
+  themeTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   customTag: {
-    backgroundColor: '#fbbf24',
-    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: GLOBAL_THEME.gold,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    borderRadius: 999,
   },
-  customText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#0a0a0a',
+  customTagText: {
+    color: '#0A0A0A',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   activeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10b981',
-    borderRadius: 12,
+    gap: 5,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    paddingHorizontal: 10,
-    gap: 4,
+    borderRadius: 999,
   },
-  activeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#0A0A0A',
+  },
+  activeTagText: {
+    color: '#0A0A0A',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  cardBody: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 18,
+  },
+  cardIcon: {
+    fontSize: 30,
+    marginBottom: 6,
+  },
+  cardTitle: {
+    fontSize: 26,
     color: '#fff',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
-  storyTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+  cardDescription: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 18,
+    marginBottom: 14,
   },
-  storyDescription: {
-    fontSize: 14,
-    color: '#fff',
-    lineHeight: 20,
-    marginBottom: 16,
-    opacity: 0.9,
-  },
-  storyStats: {
+  cardStats: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: 8,
+    marginBottom: 12,
   },
-  statItem: {
+  statCol: {
+    flex: 1,
     alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
   },
   statLabel: {
-    fontSize: 11,
-    color: '#fff',
-    opacity: 0.7,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '800',
+    letterSpacing: 1,
     marginTop: 2,
   },
-  startButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  activeButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#fff',
-  },
-  activeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-end',
-    marginTop: 12,
-    padding: 8,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 999,
   },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
+  activeButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+  },
+  actionTextPrimary: {
+    color: '#0A0A0A',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
+  actionText: {
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
+  deleteCustom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  deleteCustomText: {
+    color: GLOBAL_THEME.textMuted,
+    fontSize: 11,
   },
 });

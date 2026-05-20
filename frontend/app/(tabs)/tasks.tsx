@@ -7,30 +7,32 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useApp } from '../../src/contexts/AppContext';
-import TaskCard from '../../src/components/TaskCard';
+import QuestCard from '../../src/components/QuestCard';
 import { createTask, completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import VictoryModal from '../../src/components/VictoryModal';
 import { TaskStatus, TaskFrequency } from '../../src/types';
+import { GLOBAL_THEME, getTheme, DEFAULT_THEME } from '../../src/theme';
+import { notify } from '../../src/utils/confirm';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 
 const FREQUENCIES = [
-  { id: TaskFrequency.ONCE, label: 'One-time', icon: '📌' },
-  { id: TaskFrequency.DAILY, label: 'Daily', icon: '🔄' },
-  { id: TaskFrequency.WEEKLY, label: 'Weekly', icon: '📅' },
-  { id: TaskFrequency.MONTHLY, label: 'Monthly', icon: '🗓️' },
+  { id: TaskFrequency.ONCE, label: 'Single Quest', icon: 'flag' as const },
+  { id: TaskFrequency.DAILY, label: 'Daily', icon: 'sunny' as const },
+  { id: TaskFrequency.WEEKLY, label: 'Weekly', icon: 'calendar' as const },
+  { id: TaskFrequency.MONTHLY, label: 'Monthly', icon: 'time' as const },
 ];
 
 export default function TasksScreen() {
-  const { todayTasks, refreshAll } = useApp();
+  const { todayTasks, activeStory, refreshAll } = useApp();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState('');
@@ -40,11 +42,9 @@ export default function TasksScreen() {
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      refreshAll();
-    }, [])
-  );
+  const theme = activeStory?.has_active_story ? getTheme(activeStory.story?.theme) : DEFAULT_THEME;
+
+  useFocusEffect(useCallback(() => { refreshAll(); }, []));
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -54,46 +54,35 @@ export default function TasksScreen() {
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a task title');
+      notify('Quest needs a name', 'Please enter a quest title');
       return;
     }
-
     try {
       await createTask({
         title: title.trim(),
         description: description.trim() || undefined,
         category: category.trim() || undefined,
-        frequency: frequency,
+        frequency,
       });
-      
-      setTitle('');
-      setDescription('');
-      setCategory('');
-      setFrequency(TaskFrequency.ONCE);
+      setTitle(''); setDescription(''); setCategory(''); setFrequency(TaskFrequency.ONCE);
       setModalVisible(false);
       await refreshAll();
-    } catch (error) {
-      console.error('Error creating task:', error);
-      Alert.alert('Error', 'Failed to create task');
+    } catch {
+      notify('Error', 'Could not create quest');
     }
   };
 
   const handleCompleteTask = async (taskId: string) => {
     try {
-      if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       const response = await completeTask(taskId);
-      
       if (response.victory) {
         setVictoryData(response.victory);
         setVictoryModalVisible(true);
       }
-      
       await refreshAll();
-    } catch (error) {
-      console.error('Error completing task:', error);
-      Alert.alert('Error', 'Failed to complete task');
+    } catch {
+      notify('Error', 'Could not complete quest');
     }
   };
 
@@ -101,84 +90,89 @@ export default function TasksScreen() {
     try {
       await deleteTask(taskId);
       await refreshAll();
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      Alert.alert('Error', 'Failed to delete task');
+    } catch {
+      notify('Error', 'Could not delete quest');
     }
-  };
-
-  const handleCloseVictory = () => {
-    setVictoryModalVisible(false);
-    setVictoryData(null);
   };
 
   const pendingTasks = todayTasks.filter(t => t.status === TaskStatus.PENDING);
   const completedTasks = todayTasks.filter(t => t.status === TaskStatus.COMPLETED);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView 
+    <SafeAreaView style={styles.container} edges={['top']} testID="tasks-screen">
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Tasks</Text>
+          <View>
+            <Text style={styles.kicker}>MISSIONS</Text>
+            <Text style={styles.headerTitle}>Your Quest Log</Text>
+          </View>
           <TouchableOpacity
-            style={styles.addButton}
+            style={[styles.addButton, { backgroundColor: theme.primary }]}
             onPress={() => setModalVisible(true)}
             testID="add-task-btn"
           >
-            <Ionicons name="add" size={28} color="#0a0a0a" />
+            <Ionicons name="add" size={26} color="#0A0A0A" />
           </TouchableOpacity>
         </View>
 
         <ScrollView
           style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#ffd700"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }
         >
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              ⏳ Pending ({pendingTasks.length})
-            </Text>
+          <Animated.View entering={FadeIn.duration(400)} style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>⚔ ACTIVE QUESTS</Text>
+              <Text style={[styles.sectionCount, { color: theme.primary }]}>
+                {pendingTasks.length}
+              </Text>
+            </View>
             {pendingTasks.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No pending tasks</Text>
+                <Text style={styles.emptyEmoji}>📜</Text>
+                <Text style={styles.emptyText}>No quests await. Forge new ones above.</Text>
               </View>
             ) : (
-              pendingTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onComplete={handleCompleteTask}
-                  onDelete={handleDeleteTask}
-                />
+              pendingTasks.map((task, idx) => (
+                <Animated.View key={task.id} entering={FadeInDown.delay(idx * 60).duration(400)}>
+                  <QuestCard
+                    task={task}
+                    onComplete={handleCompleteTask}
+                    onDelete={handleDeleteTask}
+                    themeColor={theme.primary}
+                  />
+                </Animated.View>
               ))
             )}
-          </View>
+          </Animated.View>
 
           {completedTasks.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                ✅ Completed ({completedTasks.length})
-              </Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>🏆 CONQUERED</Text>
+                <Text style={[styles.sectionCount, { color: theme.primary }]}>
+                  {completedTasks.length}
+                </Text>
+              </View>
               {completedTasks.map((task) => (
-                <TaskCard
+                <QuestCard
                   key={task.id}
                   task={task}
                   onComplete={handleCompleteTask}
                   onDelete={handleDeleteTask}
+                  themeColor={theme.primary}
                 />
               ))}
             </View>
           )}
         </ScrollView>
 
+        {/* CREATE QUEST MODAL */}
         <Modal
           visible={modalVisible}
           animationType="slide"
@@ -187,27 +181,30 @@ export default function TasksScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Create New Task</Text>
+                <Text style={styles.modalTitle}>Forge a Quest</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)} testID="close-task-modal">
-                  <Ionicons name="close" size={28} color="#9ca3af" />
+                  <Ionicons name="close" size={26} color={GLOBAL_THEME.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ maxHeight: 500 }}>
+              <ScrollView style={{ maxHeight: 520 }}>
+                <Text style={styles.fieldLabel}>QUEST NAME</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Task title *"
-                  placeholderTextColor="#6b7280"
+                  placeholder="e.g., Clean the kitchen"
+                  placeholderTextColor={GLOBAL_THEME.textMuted}
                   value={title}
                   onChangeText={setTitle}
                   testID="task-title-input"
                 />
 
+                <Text style={styles.fieldLabel}>DESCRIPTION (OPTIONAL)</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="Description (optional)"
-                  placeholderTextColor="#6b7280"
+                  placeholder="Details of the quest..."
+                  placeholderTextColor={GLOBAL_THEME.textMuted}
                   value={description}
                   onChangeText={setDescription}
                   multiline
@@ -215,31 +212,36 @@ export default function TasksScreen() {
                   testID="task-description-input"
                 />
 
+                <Text style={styles.fieldLabel}>CATEGORY (OPTIONAL)</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Category (optional)"
-                  placeholderTextColor="#6b7280"
+                  placeholder="e.g., chores, work, health"
+                  placeholderTextColor={GLOBAL_THEME.textMuted}
                   value={category}
                   onChangeText={setCategory}
                   testID="task-category-input"
                 />
 
-                <Text style={styles.fieldLabel}>Repeat</Text>
+                <Text style={styles.fieldLabel}>REPEAT</Text>
                 <View style={styles.frequencyGrid}>
                   {FREQUENCIES.map((freq) => (
                     <TouchableOpacity
                       key={freq.id}
                       style={[
                         styles.frequencyOption,
-                        frequency === freq.id && styles.frequencyOptionSelected,
+                        frequency === freq.id && [styles.frequencyOptionSelected, { borderColor: theme.primary }],
                       ]}
                       onPress={() => setFrequency(freq.id)}
                       testID={`frequency-${freq.id}`}
                     >
-                      <Text style={styles.frequencyIcon}>{freq.icon}</Text>
+                      <Ionicons 
+                        name={freq.icon} 
+                        size={18} 
+                        color={frequency === freq.id ? theme.primary : GLOBAL_THEME.textMuted} 
+                      />
                       <Text style={[
                         styles.frequencyLabel,
-                        frequency === freq.id && styles.frequencyLabelSelected,
+                        frequency === freq.id && { color: theme.primary, fontWeight: '800' },
                       ]}>
                         {freq.label}
                       </Text>
@@ -249,11 +251,11 @@ export default function TasksScreen() {
               </ScrollView>
 
               <TouchableOpacity
-                style={styles.createButton}
+                style={[styles.createButton, { backgroundColor: theme.primary }]}
                 onPress={handleCreateTask}
                 testID="submit-task-btn"
               >
-                <Text style={styles.createButtonText}>Create Task</Text>
+                <Text style={styles.createButtonText}>BEGIN QUEST</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -267,7 +269,12 @@ export default function TasksScreen() {
             streakBonus={victoryData.streak_bonus}
             badgeEarned={victoryData.badge_earned}
             villainName={victoryData.villain_name}
-            onClose={handleCloseVictory}
+            themeColor={theme.primary}
+            themeFont={theme.fontFamily}
+            onClose={() => {
+              setVictoryModalVisible(false);
+              setVictoryData(null);
+            }}
           />
         )}
       </KeyboardAvoidingView>
@@ -278,134 +285,169 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: GLOBAL_THEME.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     paddingHorizontal: 24,
     paddingVertical: 16,
   },
+  kicker: {
+    fontSize: 10,
+    color: GLOBAL_THEME.gold,
+    fontWeight: '900',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
+    fontSize: 32,
+    fontWeight: '800',
+    color: GLOBAL_THEME.textPrimary,
+    letterSpacing: -0.5,
   },
   addButton: {
-    backgroundColor: '#ffd700',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 120,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
+  section: {
+    marginBottom: 28,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
+  sectionTitle: {
+    fontSize: 12,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '900',
+    letterSpacing: 2,
+  },
+  sectionCount: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
   emptyCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 12,
-    padding: 24,
+    backgroundColor: GLOBAL_THEME.surface,
+    borderRadius: 16,
+    padding: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: GLOBAL_THEME.border,
+  },
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 13,
+    color: GLOBAL_THEME.textSecondary,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1f2937',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#141414',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 40,
+    borderTopWidth: 1,
+    borderTopColor: GLOBAL_THEME.border,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: GLOBAL_THEME.textMuted,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
-  },
-  input: {
-    backgroundColor: '#374151',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#f3f4f6',
-    marginBottom: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
+    fontSize: 22,
+    fontWeight: '800',
+    color: GLOBAL_THEME.textPrimary,
   },
   fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#f3f4f6',
+    fontSize: 10,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '900',
+    letterSpacing: 2,
     marginBottom: 8,
+    marginTop: 8,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: GLOBAL_THEME.textPrimary,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: GLOBAL_THEME.border,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
   frequencyGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   frequencyOption: {
     width: '48%',
-    backgroundColor: '#374151',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 12,
-    padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
+    gap: 8,
+    borderWidth: 1.5,
     borderColor: 'transparent',
   },
   frequencyOptionSelected: {
-    borderColor: '#ffd700',
-  },
-  frequencyIcon: {
-    fontSize: 22,
-    marginBottom: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   frequencyLabel: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: GLOBAL_THEME.textSecondary,
     fontWeight: '600',
   },
-  frequencyLabelSelected: {
-    color: '#ffd700',
-  },
   createButton: {
-    backgroundColor: '#ffd700',
-    borderRadius: 12,
+    borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   createButtonText: {
-    color: '#0a0a0a',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#0A0A0A',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
 });

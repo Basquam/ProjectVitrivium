@@ -8,33 +8,34 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getStats, getAchievements } from '../../src/services/api';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { getStats, getAchievements } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
+import { useApp } from '../../src/contexts/AppContext';
+import { getTheme, GLOBAL_THEME, DEFAULT_THEME } from '../../src/theme';
+import GlassPanel from '../../src/components/GlassPanel';
 
 export default function ProfileScreen() {
   const [stats, setStats] = useState<any>(null);
   const [achievements, setAchievements] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { activeStory } = useApp();
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [])
-  );
+  const theme = activeStory?.has_active_story ? getTheme(activeStory.story?.theme) : DEFAULT_THEME;
+
+  useFocusEffect(useCallback(() => { loadData(); }, []));
 
   const loadData = async () => {
     try {
-      const [statsData, achievementsData] = await Promise.all([
-        getStats(),
-        getAchievements(),
-      ]);
+      const [statsData, achData] = await Promise.all([getStats(), getAchievements()]);
       setStats(statsData);
-      setAchievements(achievementsData);
+      setAchievements(achData);
     } catch (error) {
-      console.error('Error loading profile data:', error);
+      console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
     }
@@ -49,287 +50,395 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ffd700" />
+        <ActivityIndicator size="large" color={GLOBAL_THEME.gold} />
       </View>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#ffd700"
-          />
-        }
-      >
-        {/* Header */}
-        <LinearGradient
-          colors={['#1e40af', '#3b82f6']}
-          style={styles.header}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.avatarContainer}>
-            <Ionicons name="person" size={48} color="#fff" />
-          </View>
-          <Text style={styles.username}>Quest Hero</Text>
-          <Text style={styles.title}>Task Warrior</Text>
-        </LinearGradient>
+  const heroTitle = stats?.total_stories_completed > 0 ? 'LEGEND' : 
+                    stats?.total_badges > 5 ? 'CHAMPION' :
+                    stats?.total_badges > 2 ? 'WARRIOR' :
+                    stats?.total_tasks_completed > 0 ? 'SEEKER' : 'NOVICE';
 
-        {/* Streak Card */}
-        {stats?.current_streak > 0 && (
-          <View style={styles.section}>
-            <LinearGradient
-              colors={['#fb923c', '#c2410c']}
-              style={styles.streakCard}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.streakEmoji}>🔥</Text>
-              <View style={styles.streakContent}>
-                <Text style={styles.streakValue}>{stats.current_streak} Days</Text>
-                <Text style={styles.streakLabel}>Current Streak</Text>
-                <Text style={styles.streakLongest}>
-                  Longest: {stats.longest_streak} days
+  return (
+    <View style={styles.root} testID="profile-screen">
+      {/* Cinematic hero background */}
+      <View style={styles.heroBg}>
+        <Image
+          source={{ uri: theme.imageUrl }}
+          style={styles.heroBgImg}
+          contentFit="cover"
+          transition={400}
+        />
+        <View style={[styles.heroBgTint, { backgroundColor: theme.tintOverlay }]} />
+        <LinearGradient
+          colors={['rgba(10,10,10,0.3)', 'rgba(10,10,10,0.85)', GLOBAL_THEME.background]}
+          locations={[0, 0.6, 1]}
+          style={StyleSheet.absoluteFillObject}
+        />
+      </View>
+
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+          }
+        >
+          {/* Hero Banner */}
+          <Animated.View entering={FadeIn.duration(500)} style={styles.heroBanner}>
+            <View style={[styles.avatarRing, { borderColor: theme.primary }]}>
+              <View style={[styles.avatar, { backgroundColor: theme.tintOverlay }]}>
+                <Text style={styles.avatarEmoji}>{theme.emoji}</Text>
+              </View>
+            </View>
+            <Text style={[styles.heroLabel, { color: theme.primary }]}>YOUR TITLE</Text>
+            <Text style={[styles.heroName, { fontFamily: theme.fontFamily }]}>{heroTitle}</Text>
+            <View style={styles.heroLine} />
+            <Text style={styles.heroSubtitle}>
+              {stats?.total_points || 0} XP • {stats?.total_badges || 0} BADGES
+            </Text>
+          </Animated.View>
+
+          {/* Streak Card - Featured */}
+          {stats?.current_streak > 0 && (
+            <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.section}>
+              <LinearGradient
+                colors={['#fb923c', '#c2410c']}
+                style={styles.streakCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.streakFire}>
+                  <Text style={styles.streakFireEmoji}>🔥</Text>
+                </View>
+                <View style={styles.streakInfo}>
+                  <Text style={styles.streakDays}>{stats.current_streak}</Text>
+                  <Text style={styles.streakDaysLabel}>DAY STREAK</Text>
+                  <Text style={styles.streakBest}>
+                    Best: {stats.longest_streak} days
+                  </Text>
+                </View>
+                <View style={styles.streakMeta}>
+                  <Text style={styles.streakMetaText}>
+                    {stats.current_streak >= 7 ? '+25 XP bonus active' :
+                     stats.current_streak >= 3 ? '+10 XP bonus active' :
+                     `${7 - stats.current_streak} days to mega bonus`}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Animated.View>
+          )}
+
+          {/* Stats Grid */}
+          <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.section}>
+            <Text style={styles.sectionTitle}>📊 YOUR LEGEND</Text>
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { borderColor: theme.primary + '40' }]}>
+                <Ionicons name="trophy" size={26} color={theme.primary} />
+                <Text style={[styles.statValue, { color: theme.primary }]}>
+                  {stats?.total_points || 0}
+                </Text>
+                <Text style={styles.statLabel}>TOTAL XP</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: theme.primary + '40' }]}>
+                <Ionicons name="checkmark-done-circle" size={26} color="#10b981" />
+                <Text style={[styles.statValue, { color: '#10b981' }]}>
+                  {stats?.total_tasks_completed || 0}
+                </Text>
+                <Text style={styles.statLabel}>QUESTS DONE</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: theme.primary + '40' }]}>
+                <Ionicons name="book" size={26} color="#3b82f6" />
+                <Text style={[styles.statValue, { color: '#3b82f6' }]}>
+                  {stats?.total_stories_completed || 0}
+                </Text>
+                <Text style={styles.statLabel}>SAGAS WON</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: theme.primary + '40' }]}>
+                <Ionicons name="ribbon" size={26} color="#8b5cf6" />
+                <Text style={[styles.statValue, { color: '#8b5cf6' }]}>
+                  {stats?.total_badges || 0}
+                </Text>
+                <Text style={styles.statLabel}>BADGES</Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Achievements */}
+          <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.section}>
+            <Text style={styles.sectionTitle}>🎖 BADGES EARNED</Text>
+            {achievements?.achievements && achievements.achievements.length > 0 ? (
+              <View style={styles.badgesGrid}>
+                {achievements.achievements.map((badge: string, index: number) => (
+                  <Animated.View 
+                    key={index} 
+                    entering={FadeIn.delay(500 + index * 100).duration(400)}
+                    style={[styles.badgeCard, { borderColor: theme.primary }]}
+                  >
+                    <Text style={styles.badgeEmoji}>🎖️</Text>
+                    <Text style={styles.badgeName}>{badge}</Text>
+                  </Animated.View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  Complete quests to earn legendary badges.
                 </Text>
               </View>
-            </LinearGradient>
-          </View>
-        )}
+            )}
+          </Animated.View>
 
-        {/* Stats Overview */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Statistics</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="trophy" size={32} color="#ffd700" />
-              <Text style={styles.statValue}>{stats?.total_points || 0}</Text>
-              <Text style={styles.statLabel}>Total Points</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="checkmark-done" size={32} color="#10b981" />
-              <Text style={styles.statValue}>{stats?.total_tasks_completed || 0}</Text>
-              <Text style={styles.statLabel}>Tasks Done</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="book" size={32} color="#3b82f6" />
-              <Text style={styles.statValue}>{stats?.total_stories_completed || 0}</Text>
-              <Text style={styles.statLabel}>Stories</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="ribbon" size={32} color="#8b5cf6" />
-              <Text style={styles.statValue}>{stats?.total_badges || 0}</Text>
-              <Text style={styles.statLabel}>Badges</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🏆 Achievements</Text>
-          {achievements?.achievements && achievements.achievements.length > 0 ? (
-            <View style={styles.badgesContainer}>
-              {achievements.achievements.map((badge: string, index: number) => (
-                <View key={index} style={styles.badgeCard}>
-                  <Text style={styles.badgeEmoji}>🎖️</Text>
-                  <Text style={styles.badgeName}>{badge}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>
-                Complete tasks to earn your first badge!
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Motivational Section */}
-        <View style={styles.motivationCard}>
-          <Text style={styles.motivationEmoji}>💪</Text>
-          <Text style={styles.motivationTitle}>Keep Going, Hero!</Text>
-          <Text style={styles.motivationText}>
-            Every task you complete brings you closer to becoming a legend. Your journey has just begun!
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Motivation */}
+          <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.motivationCard}>
+            <Text style={styles.motivationEmoji}>⚔️</Text>
+            <Text style={[styles.motivationTitle, { color: theme.primary, fontFamily: theme.fontFamily }]}>
+              The Path of Legend
+            </Text>
+            <Text style={styles.motivationText}>
+              Every quest conquered is a chapter written.{'\n'}
+              Every streak is a sword sharpened.{'\n'}
+              Your story is far from over, hero.
+            </Text>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: GLOBAL_THEME.background,
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: GLOBAL_THEME.background,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
+  },
+  heroBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 320,
+    overflow: 'hidden',
+  },
+  heroBgImg: {
+    width: '100%',
+    height: '100%',
+  },
+  heroBgTint: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
-  header: {
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  heroBanner: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingTop: 32,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+  },
+  avatarRing: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 2,
+    padding: 4,
+    marginBottom: 16,
+  },
+  avatar: {
+    flex: 1,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarEmoji: {
+    fontSize: 48,
+  },
+  heroLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  heroName: {
+    fontSize: 42,
+    color: GLOBAL_THEME.textPrimary,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  heroLine: {
+    width: 40,
+    height: 2,
+    backgroundColor: GLOBAL_THEME.border,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 11,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  section: {
     paddingHorizontal: 24,
     marginBottom: 24,
   },
-  avatarContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: '#fff',
-  },
-  username: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#f3f4f6',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
+    fontSize: 11,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '900',
+    letterSpacing: 2,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  badgesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  badgeCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    minWidth: 100,
-    borderWidth: 1,
-    borderColor: '#ffd700',
-  },
-  badgeEmoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  badgeName: {
-    fontSize: 12,
-    color: '#f3f4f6',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  emptyCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  motivationCard: {
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 24,
-    marginHorizontal: 16,
-    marginBottom: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  motivationEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  motivationTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 8,
-  },
-  motivationText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    lineHeight: 20,
   },
   streakCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
-    gap: 16,
+    overflow: 'hidden',
   },
-  streakEmoji: {
-    fontSize: 48,
+  streakFire: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  streakContent: {
+  streakFireEmoji: {
+    fontSize: 36,
+  },
+  streakInfo: {
     flex: 1,
   },
-  streakValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  streakDays: {
+    fontSize: 36,
+    fontWeight: '900',
     color: '#fff',
+    lineHeight: 38,
   },
-  streakLabel: {
-    fontSize: 14,
+  streakDaysLabel: {
+    fontSize: 10,
     color: '#fff',
+    fontWeight: '800',
+    letterSpacing: 2,
     opacity: 0.9,
   },
-  streakLongest: {
-    fontSize: 12,
+  streakBest: {
+    fontSize: 11,
     color: '#fff',
     opacity: 0.7,
     marginTop: 4,
+  },
+  streakMeta: {
+    alignItems: 'flex-end',
+  },
+  streakMetaText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'right',
+    opacity: 0.85,
+    maxWidth: 100,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statCard: {
+    width: '47.5%',
+    backgroundColor: GLOBAL_THEME.surface,
+    borderRadius: 16,
+    padding: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    marginTop: 6,
+  },
+  statLabel: {
+    fontSize: 9,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginTop: 4,
+  },
+  badgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  badgeCard: {
+    width: '31%',
+    backgroundColor: GLOBAL_THEME.surface,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  badgeEmoji: {
+    fontSize: 32,
+    marginBottom: 6,
+  },
+  badgeName: {
+    fontSize: 11,
+    color: GLOBAL_THEME.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  emptyCard: {
+    backgroundColor: GLOBAL_THEME.surface,
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: GLOBAL_THEME.border,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: GLOBAL_THEME.textSecondary,
+    textAlign: 'center',
+  },
+  motivationCard: {
+    marginHorizontal: 24,
+    backgroundColor: GLOBAL_THEME.surface,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: GLOBAL_THEME.border,
+  },
+  motivationEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  motivationTitle: {
+    fontSize: 22,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  motivationText: {
+    fontSize: 13,
+    color: GLOBAL_THEME.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
 });
