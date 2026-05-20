@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { Story } from '../../src/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../src/contexts/AppContext';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 export default function StoriesScreen() {
   const [stories, setStories] = useState<Story[]>([]);
@@ -23,9 +23,12 @@ export default function StoriesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { activeStory, refreshAll } = useApp();
 
-  useEffect(() => {
-    loadStories();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadStories();
+      refreshAll();
+    }, [])
+  );
 
   const loadStories = async () => {
     try {

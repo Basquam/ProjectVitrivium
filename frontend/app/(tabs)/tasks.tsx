@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import VictoryModal from '../../src/components/VictoryModal';
 import { TaskStatus, TaskFrequency } from '../../src/types';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
 
 const FREQUENCIES = [
   { id: TaskFrequency.ONCE, label: 'One-time', icon: '📌' },
@@ -38,6 +39,12 @@ export default function TasksScreen() {
   const [frequency, setFrequency] = useState(TaskFrequency.ONCE);
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshAll();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

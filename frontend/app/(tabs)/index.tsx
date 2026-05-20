@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import TaskCard from '../../src/components/TaskCard';
 import VictoryModal from '../../src/components/VictoryModal';
 import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { TaskStatus } from '../../src/types';
 import * as Haptics from 'expo-haptics';
 
@@ -25,6 +25,12 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [victoryData, setVictoryData] = useState<any>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshAll();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
