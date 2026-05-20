@@ -1,0 +1,152 @@
+{
+  "project_meta": {
+    "app_type": "hybrid_fullstack",
+    "framework": "React Native + Expo",
+    "styling": "StyleSheet + expo-linear-gradient + expo-blur",
+    "animation": "react-native-reanimated",
+    "theme_archetype": "Archetype 5: Jewel & Luxury (Cinematic, moody, immersive)"
+  },
+  "core_design_principles": [
+    "Fusion over Imitation: The app is an interactive novel; tasks are quests. Blend productivity utility with high-end gaming UX.",
+    "Emotion First: Every screen must feel emotionally directed based on the active story theme.",
+    "Contrast & Depth: Use deep black backgrounds (#0A0A0A) heavily overlayed with colored linear-gradients to create atmospheric depth.",
+    "Tactile Feedback: Every task completion (quest victory) must trigger expo-haptics and a satisfying micro-animation."
+  ],
+  "theme_system": {
+    "global_core": {
+      "background": "#0A0A0A",
+      "surface": "#171717",
+      "surface_glass": "rgba(255, 255, 255, 0.05)",
+      "text_primary": "#F9FAFB",
+      "text_secondary": "#9CA3AF",
+      "border": "rgba(255, 255, 255, 0.1)"
+    },
+    "story_universes": {
+      "wild_west": {
+        "name": "Wild West Shootout",
+        "primary": "#D97706",
+        "secondary": "#78350F",
+        "tint_overlay": "rgba(217, 119, 6, 0.15)",
+        "atmosphere": "Dust, sepia, grit, sunset.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/5473144ffb28792bf989b067942b0bf2adbbb2d156c20095403e759cf70442f9.png",
+        "font_family": "Rye, serif"
+      },
+      "space": {
+        "name": "Space Sci-Fi",
+        "primary": "#8B5CF6",
+        "secondary": "#4C1D95",
+        "tint_overlay": "rgba(139, 92, 246, 0.15)",
+        "atmosphere": "Neon, glowing violet, distant void.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/c214256c5a5b974456281021ec4548ab71a789ec75603bfa777e230d65db2adb.png",
+        "font_family": "Orbitron, sans-serif"
+      },
+      "medieval": {
+        "name": "Medieval",
+        "primary": "#DC2626",
+        "secondary": "#7F1D1D",
+        "tint_overlay": "rgba(220, 38, 38, 0.15)",
+        "atmosphere": "Torchlight, velvet, dark fantasy stone.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/e1417ff934850fe336c35ce6645fe044f6fdef24a86d1651035a8ae2ac594ccd.png",
+        "font_family": "Cinzel, serif"
+      },
+      "noir": {
+        "name": "Detective Noir",
+        "primary": "#F3F4F6",
+        "secondary": "#374151",
+        "tint_overlay": "rgba(255, 255, 255, 0.05)",
+        "atmosphere": "High contrast black and white, heavy rain shadows.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/2534cee4664f41371dab018e16dc3505e41068e68dd73a90343c7843e5da52c4.png",
+        "font_family": "Courier Prime, monospace"
+      },
+      "zombie": {
+        "name": "Zombie Horror",
+        "primary": "#10B981",
+        "secondary": "#064E3B",
+        "tint_overlay": "rgba(16, 185, 129, 0.15)",
+        "atmosphere": "Toxic green mist, decay, grunge suspense.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/37c2005f69996e62b3fb6b779ba0d2f8bf1778e754df6c77bfcee3ea6dbd3769.png",
+        "font_family": "Oswald, sans-serif"
+      },
+      "pirate": {
+        "name": "Pirate",
+        "primary": "#06B6D4",
+        "secondary": "#164E63",
+        "tint_overlay": "rgba(6, 182, 212, 0.15)",
+        "atmosphere": "Ocean midnight, cyan moon, dark wood.",
+        "image_url": "https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/89a6ab8f7df0e3d980f3fa24cf5746286b81271d38ce9bb7b935a3aa4648bc70.png",
+        "font_family": "Baskerville, serif"
+      }
+    }
+  },
+  "typography": {
+    "headings": {
+      "strategy": "Expressive & Large. DO NOT use generic sans for story titles.",
+      "sizes": {
+        "h1": 42,
+        "h2": 32,
+        "h3": 24,
+        "h4": 18
+      },
+      "letter_spacing": -0.5
+    },
+    "body": {
+      "strategy": "System-safe geometric or clean sans (Inter/System) for legibility, allowing the theme headers to stand out.",
+      "sizes": {
+        "base": 16,
+        "small": 14,
+        "label": 12
+      },
+      "line_height_multiplier": 1.5
+    }
+  },
+  "layout_and_spacing": {
+    "spacing_scale": [4, 8, 12, 16, 24, 32, 48, 64],
+    "container_padding": 24,
+    "border_radius": {
+      "card": 16,
+      "button": 12,
+      "badge": 999
+    }
+  },
+  "components": {
+    "ActiveStoryHeroView": {
+      "type": "Cinematic Header",
+      "structure": "Full-width expo-image taking top 40% of the screen. Absolute positioned LinearGradient overlay (transparent -> #0A0A0A) to seamlessly blend into content.",
+      "content": "Story title in theme font, current beat status over an expo-blur glassmorphism badge."
+    },
+    "VillainEncounterCard": {
+      "type": "Dramatic Reveal",
+      "structure": "Large portrait (AI generated), surrounded by a 2px border matching the theme's primary color. Deep shadow (elevation: 10).",
+      "animation": "Reanimated FadeInUp with spring configuration on mount."
+    },
+    "QuestCard": {
+      "type": "Task List Item",
+      "structure": "Rectangular card, bg: surface. Left border width 4px mapped to theme primary color. Right side has a custom radio button.",
+      "interaction": "On press: trigger Haptics.impactAsync('heavy'). Text gets a line-through, opacity drops to 0.5. Reanimated scale down slightly.",
+      "test_attr": "data-testid=\"quest-card-{task_id}\""
+    },
+    "VictoryCelebration": {
+      "type": "Fullscreen Overlay",
+      "structure": "Triggers upon villain defeat. react-native-confetti-cannon shoots from bottom center. Large typography displaying 'VICTORY'.",
+      "animation": "Reanimated scale up of the gained badge/points."
+    },
+    "StoryProgressVisualization": {
+      "type": "Journey Map",
+      "structure": "Instead of a basic progress bar, render a vertical timeline (like a quest log). Completed beats are bright and connected by a glowing line (LinearGradient); upcoming beats are dimmed (opacity 0.3)."
+    }
+  },
+  "animations": {
+    "navigation": "Fade transitions between screens to mimic pages turning or scenes changing.",
+    "list_items": "Staggered entrance using Reanimated entering={FadeInDown.delay(index * 100)}.",
+    "beat_reveal": "When a new story beat is unlocked, use a strong spring animation to scale it from 0.8 to 1.0."
+  },
+  "instructions_to_main_agent": [
+    "Redesign the 5 existing screens (Home, Tasks, Stories, Profile, Create-Story) using this cinematic language.",
+    "Do NOT break the FastAPI backend integration. The data models (daily/weekly/monthly tasks) remain the same; ONLY the visual presentation changes from 'basic lists' to 'Quest Logs'.",
+    "Use expo-image for all background images fetched from the URLs provided in this JSON.",
+    "Use expo-linear-gradient extensively over images to ensure white text remains accessible (APCA/WCAG compliant).",
+    "Implement glassmorphism using expo-blur (<BlurView intensity={20} tint='dark'>) for story beat cards sitting on top of the hero images.",
+    "Apply data-testid to all interactive elements for robust testing (e.g., data-testid='start-quest-btn').",
+    "The files to modify are standard React Native .js/.jsx files. Do NOT use tailwindcss classes; implement these guidelines via StyleSheet.create()."
+  ]
+}
