@@ -1,0 +1,50 @@
+{
+  "summary": "Frontend testing of Quest Hero user flows. Custom story CREATION succeeds at the API level (backend verified: 7 stories incl. 'The Test Quest' after POST), but the new story does NOT appear in the Stories list UI after navigating back from /create-story — BLOCKING the rest of the flow (start story → tasks → beat advancement → AI image gen). Identified root cause: missing focus-based refresh on stories screen. Could not complete steps 5-13 because the custom story never became selectable from UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "app/(tabs)/stories.tsx",
+        "issue": "Stories list is not refreshed when returning from /create-story. The newly created custom story does not appear until the user manually pull-to-refresh OR fully reloads the app. Confirmed: POST /api/stories/custom returned 200 and DB had the story, but UI still showed only 6 built-in stories.",
+        "testID": "create-custom-story-btn / start-story-{customId}",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Create custom story → return to Stories list → start it",
+        "issue": "Backend creates story successfully but frontend never re-fetches list on screen focus, so user cannot find/start the story they just created. Blocks every downstream test step (start adventure, task victory advancement, villain image gen).",
+        "affected_testIDs": ["create-custom-story-btn", "create-story-submit-btn", "start-story-{customId}"]
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_2.json"
+  ],
+  "action_items": [
+    "Fix /app/frontend/app/(tabs)/stories.tsx: replace `useEffect(() => loadStories(), [])` with a focus-aware loader. Use `useFocusEffect(useCallback(() => { loadStories(); }, []))` from expo-router (or @react-navigation/native). This will reload the stories list every time the Stories tab gains focus — including after router.back() from /create-story.",
+    "Alternative/additional fix: in create-story.tsx, after successful create, call `router.replace('/(tabs)/stories')` with a refresh param, or use a global event/context refresh.",
+    "Consider applying the same focus-refresh pattern to (tabs)/index.tsx (active story state may become stale) and (tabs)/profile.tsx (streak/stats) so newly completed tasks reflect immediately when switching tabs.",
+    "After fix, re-run full flow: create custom story → verify CUSTOM tag visible → Start Adventure → 3 tasks → victory modal on 3rd → Generate AI Image → cache test (refresh)."
+  ],
+  "critical_code_review_comments": [
+    "stories.tsx loads stories only on mount; with expo-router tab navigation, the tab screen is NOT unmounted on push/back to /create-story, so loadStories() never re-runs. This is the root cause.",
+    "Same pattern (useEffect with [] deps) used in tasks.tsx and profile.tsx via useApp() context, but those rely on refreshAll() which is at least called via onComplete/onCreate handlers, so they're less affected.",
+    "Suggest centralizing stories/state in the AppContext so create-story.tsx can trigger context.refreshStories() before router.back()."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (verified via direct API: POST /api/stories/custom + GET /api/stories both work)",
+    "frontend": "~25% (3 of 13 requested checks passed: Home loads, 6 stories display on Stories tab, Create Story screen accepts input and submits. Blocked from validating remaining 10 steps because new story doesn't appear in UI.)"
+  },
+  "seed_data_creation": "Created test custom story 'The Test Quest' (id: custom-1779254950.639375); deleted via DELETE /api/stories/custom/{id} during cleanup. No residual seed data.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "EXPO_PUBLIC_BACKEND_URL=https://epic-daily-1.preview.emergentagent.com. Backend custom-story create endpoint works (POST /api/stories/custom). The blocking bug is in /app/frontend/app/(tabs)/stories.tsx — list never refreshes on screen focus. Once fixed with useFocusEffect, re-run the full E2E flow. Note: react-native-web does NOT expose role='tab' on Expo Router tab bar buttons reliably — use testID-based selectors for Home/Tasks/Stories/Profile tabs (consider adding testID='tab-home', 'tab-tasks', etc. in (tabs)/_layout.tsx).",
+  "rca_of_issue": "REPRODUCTION: (1) Open app, go to Stories tab, (2) Tap 'Custom' top-right -> /create-story, (3) Fill title='The Test Quest', description, leave Fantasy + 3 Acts default, fill 3 villains, (4) Tap 'Create Story', (5) Dismiss success Alert (auto navigates back via router.back()). EXPECTED: New story with CUSTOM tag visible in Stories list. ACTUAL: Stories list still shows only the 6 built-in stories. VERIFIED via direct API call: GET /api/stories returns 7 stories including the just-created one. ROOT CAUSE: stories.tsx line 26-28 — useEffect(() => { loadStories(); }, []) only fires on initial mount; Expo Router tab routes are kept alive during stack push/back, so the effect never re-runs. MITIGATION: use useFocusEffect to refetch on every focus, OR call refreshAll/loadStories via shared context after successful create."
+}
