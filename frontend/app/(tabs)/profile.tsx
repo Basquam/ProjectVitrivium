@@ -8,7 +8,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { getStats, getAchievements } from '../../src/services/api';
@@ -16,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useApp } from '../../src/contexts/AppContext';
 import { getTheme, GLOBAL_THEME, DEFAULT_THEME } from '../../src/theme';
-import GlassPanel from '../../src/components/GlassPanel';
 import ParallaxHero from '../../src/components/ParallaxHero';
 
 export default function ProfileScreen() {
@@ -68,7 +66,7 @@ export default function ProfileScreen() {
         imageUrl={theme.imageUrl}
         tintColor={theme.tintOverlay}
         height={320}
-        intensity={20}
+        intensity={Math.max(12, theme.motionIntensity - 8)}
         fadeToBackground
       />
 

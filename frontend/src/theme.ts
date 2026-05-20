@@ -1,5 +1,4 @@
 // Story theme system - colors, fonts, background images per universe
-import { ImageSourcePropType } from 'react-native';
 
 export interface StoryTheme {
   id: string;
@@ -11,6 +10,8 @@ export interface StoryTheme {
   imageUrl: string;
   fontFamily: string;
   emoji: string;
+  /** Pixels the parallax image can drift in each direction. Higher = more dramatic motion. */
+  motionIntensity: number;
 }
 
 export const GLOBAL_THEME = {
@@ -36,6 +37,7 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/5473144ffb28792bf989b067942b0bf2adbbb2d156c20095403e759cf70442f9.png',
     fontFamily: 'Rye_400Regular',
     emoji: '🤠',
+    motionIntensity: 24, // moderate, like dust drifting
   },
   'sci-fi': {
     id: 'sci-fi',
@@ -47,6 +49,7 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/c214256c5a5b974456281021ec4548ab71a789ec75603bfa777e230d65db2adb.png',
     fontFamily: 'Orbitron_700Bold',
     emoji: '🚀',
+    motionIntensity: 38, // dramatic, weightless floating
   },
   medieval: {
     id: 'medieval',
@@ -58,6 +61,7 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/e1417ff934850fe336c35ce6645fe044f6fdef24a86d1651035a8ae2ac594ccd.png',
     fontFamily: 'Cinzel_700Bold',
     emoji: '⚔️',
+    motionIntensity: 18, // anchored, heavy stone walls
   },
   noir: {
     id: 'noir',
@@ -69,6 +73,7 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/2534cee4664f41371dab018e16dc3505e41068e68dd73a90343c7843e5da52c4.png',
     fontFamily: 'CourierPrime_700Bold',
     emoji: '🕵️',
+    motionIntensity: 12, // minimal, oppressive stillness
   },
   horror: {
     id: 'horror',
@@ -80,6 +85,7 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/37c2005f69996e62b3fb6b779ba0d2f8bf1778e754df6c77bfcee3ea6dbd3769.png',
     fontFamily: 'Oswald_700Bold',
     emoji: '🧟',
+    motionIntensity: 16, // slow, creeping dread
   },
   pirate: {
     id: 'pirate',
@@ -91,19 +97,24 @@ export const STORY_THEMES: Record<string, StoryTheme> = {
     imageUrl: 'https://static.prod-images.emergentagent.com/jobs/eab5525e-f04a-431c-a4c4-2d2f5b49df87/images/89a6ab8f7df0e3d980f3fa24cf5746286b81271d38ce9bb7b935a3aa4648bc70.png',
     fontFamily: 'Cinzel_700Bold',
     emoji: '🏴‍☠️',
+    motionIntensity: 34, // rocking ship on waves
   },
 };
 
+// DEFAULT theme - shown when no story is active. Uses cosmic/space image because
+// it feels UNIVERSAL (all worlds exist in the cosmos), but tinted in gold/neutral
+// so it doesn't feel sci-fi specific.
 export const DEFAULT_THEME: StoryTheme = {
   id: 'default',
   name: 'Quest Hero',
   primary: '#F4C430',
   secondary: '#B8860B',
-  tintOverlay: 'rgba(244, 196, 48, 0.12)',
+  tintOverlay: 'rgba(0, 0, 0, 0.45)', // dark veil instead of color cast - keeps the image neutral/universal
   atmosphere: 'Cinematic gold and shadow.',
-  imageUrl: STORY_THEMES.medieval.imageUrl, // fallback
+  imageUrl: STORY_THEMES['sci-fi'].imageUrl, // cosmic = universal
   fontFamily: 'Cinzel_700Bold',
   emoji: '⚔️',
+  motionIntensity: 22, // gentle, calm wonder
 };
 
 export const getTheme = (themeId?: string): StoryTheme => {

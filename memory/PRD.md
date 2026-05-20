@@ -46,12 +46,18 @@ Each story is a complete world with unique colors, fonts, and atmospheric backgr
 - Single / Daily / Weekly / Monthly frequencies
 - Auto-generates next instance on completion
 
-### 6. Cinematic Components (v2.0)
+### 6. Cinematic Components (v2.1)
 - **CinematicHero**: Full-screen background image with gradient fade
+- **ParallaxHero**: Gyroscope-driven motion with PER-STORY intensity (Noir=12 minimal, Medieval=18 anchored, Western=24 dust, Default=22 cosmic wonder, Horror=16 creeping, Pirate=34 rocking ship, Sci-Fi=38 weightless)
+- **Universal Landing**: When no story is active, shows cosmic background + 6 floating theme-colored world icons hinting at variety + "SIX WORLDS AWAIT" label
 - **JourneyMap**: Vertical timeline showing past beats (✓), current (highlighted), future ("???")
 - **QuestCard**: Themed left border, smart confirmation dialogs (web + native)
 - **VictoryModal**: Theme-colored, animated, with villain name + streak bonus + badge unlock
 - **GlassPanel**: BlurView wrapper with web fallback
+
+### Critical Fix: Expo Go Loading Hang
+- **Root cause**: Blocking `useFonts` checks on 5 Google Fonts (Rye, Orbitron, Cinzel, Oswald, Courier Prime) were preventing the app from rendering on Expo Go when font CDN was slow
+- **Fix**: Fonts now load ASYNCHRONOUSLY in the background. The app renders immediately with system-font fallbacks. Custom fonts swap in automatically once loaded. Zero risk of hanging on the loading screen.
 
 ### 7. Sound, Haptics & Motion
 - Haptic feedback (Heavy on completion, Selection on tap, Success notification on victory)

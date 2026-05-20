@@ -96,7 +96,7 @@ const ParallaxHero: React.FC<ParallaxHeroProps> = ({
   }));
 
   return (
-    <View style={[styles.container, { height }, style]} pointerEvents="none">
+    <View style={[styles.container, { height, pointerEvents: 'none' as any }, style]}>
       <Animated.View style={[styles.imageWrap, animatedStyle]}>
         <Image
           source={{ uri: imageUrl }}

@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
 import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useApp } from '../../src/contexts/AppContext';
 import VictoryModal from '../../src/components/VictoryModal';
@@ -25,7 +24,7 @@ import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { TaskStatus, BeatType } from '../../src/types';
-import { getTheme, GLOBAL_THEME, DEFAULT_THEME } from '../../src/theme';
+import { getTheme, GLOBAL_THEME, DEFAULT_THEME, STORY_THEMES } from '../../src/theme';
 import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -95,7 +94,7 @@ export default function HomeScreen() {
         imageUrl={theme.imageUrl}
         tintColor={theme.tintOverlay}
         height={HERO_HEIGHT}
-        intensity={28}
+        intensity={theme.motionIntensity}
         fadeToBackground
       />
 
@@ -238,6 +237,21 @@ export default function HomeScreen() {
               <Text style={styles.heroSubtitle}>
                 Transform your tasks into legendary tales
               </Text>
+
+              {/* Floating story icons - hint at the variety of worlds */}
+              <View style={styles.worldsHint}>
+                {Object.values(STORY_THEMES).map((t, idx) => (
+                  <Animated.View
+                    key={t.id}
+                    entering={FadeIn.delay(400 + idx * 100).duration(500)}
+                    style={[styles.worldIcon, { borderColor: t.primary }]}
+                  >
+                    <Text style={styles.worldIconText}>{t.emoji}</Text>
+                  </Animated.View>
+                ))}
+              </View>
+              <Text style={styles.worldsHintLabel}>SIX WORLDS AWAIT</Text>
+
               <TouchableOpacity
                 style={[styles.ctaButton, { borderColor: theme.primary }]}
                 onPress={() => router.push('/stories')}
@@ -588,6 +602,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 2,
+  },
+  worldsHint: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 8,
+    maxWidth: 320,
+  },
+  worldIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  worldIconText: {
+    fontSize: 20,
+  },
+  worldsHintLabel: {
+    fontSize: 10,
+    color: GLOBAL_THEME.textSecondary,
+    fontWeight: '800',
+    letterSpacing: 3,
+    marginBottom: 24,
+    marginTop: 6,
   },
   emptyState: {
     padding: 32,
