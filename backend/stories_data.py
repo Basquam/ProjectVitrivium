@@ -1,6 +1,6 @@
 """All pre-built stories for Quest Hero app."""
 from enum import Enum
-from typing import List
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -11,6 +11,11 @@ class BeatType(str, Enum):
     VICTORY = "victory"
     PLOT_TWIST = "plot_twist"
     FINALE = "finale"
+    # Yeni Branching Tipleri
+    EXPLORATION = "exploration"
+    CONFLICT = "conflict"
+    REWARD = "reward"
+    SETBACK = "setback"
 
 
 class StoryBeat(BaseModel):
@@ -22,6 +27,11 @@ class StoryBeat(BaseModel):
     reward_points: int = 0
     reward_badge: str = ""
     image_prompt: str = ""  # For AI image generation
+    
+    # === BRANCHING İÇİN YENİ ALANLAR ===
+    beat_type: str = "normal"
+    conditions: Dict[str, Any] = Field(default_factory=dict)
+    effects: Dict[str, Any] = Field(default_factory=dict)
 
 
 class StoryAct(BaseModel):
@@ -59,6 +69,27 @@ WILD_WEST_STORY = Story(
         StoryAct(act_number=1, title="Act I: Arrival at Dusty Gulch", beats=[
             StoryBeat(type=BeatType.INTRO, title="The Dusty Trail", text="🏜️ The sun beats down as you ride into Dusty Gulch. The town is quiet... too quiet. Townsfolk whisper and point. Something is very wrong here.", image_url="🌵", image_prompt="A lone cowboy rides into a dusty western frontier town at sunset, dramatic cinematic lighting"),
             StoryBeat(type=BeatType.CHALLENGE, title="Billy the Kid Appears", text="🤠 'Well, well... a stranger.' Billy the Kid steps out from the saloon. 'This town ain't safe for heroes. Face me at high noon!'", villain_name="Billy the Kid", image_url="🔫", image_prompt="Wild West villain Billy the Kid, young outlaw with revolver, menacing pose, saloon background"),
+            
+            # === Branching Beat Örnekleri ===
+            StoryBeat(
+                type=BeatType.REWARD,
+                title="Outlaw'un İzleri",
+                text="Bulaşıkları yıkarken saloon masasında Billy'nin haritasını buldun! Artık nerede gizlendiğini biliyorsun.",
+                beat_type="reward",
+                conditions={"task_category": "house_chores"},
+                effects={"villain_health": -15, "add_flags": ["found_map"], "hero_momentum": 15},
+                reward_points=30
+            ),
+            StoryBeat(
+                type=BeatType.SETBACK,
+                title="Geciken Temizlik",
+                text="Ev işlerini geciktirdin... Billy'nin adamları saloon'a geldi ve ortalığı dağıttı!",
+                beat_type="setback",
+                conditions={"task_category": "house_chores"},
+                effects={"villain_health": 12, "hero_momentum": -10},
+                reward_points=5
+            ),
+            
             StoryBeat(type=BeatType.VICTORY, title="Victory Over Billy", text="💥 BANG! Your draw was faster! Billy stumbles back. 'Impossible...' The townsfolk erupt in cheers!", image_url="⭐", reward_points=50, reward_badge="First Blood"),
             StoryBeat(type=BeatType.CHALLENGE, title="The Dalton Gang Strikes", text="🏦 Gunshots ring out! The Dalton Gang is robbing the bank! 'Nobody move!' shouts Grat Dalton.", villain_name="Grat Dalton", image_url="💰", image_prompt="Wild West bank robbery scene, outlaw gang with masks and guns, dramatic"),
             StoryBeat(type=BeatType.VICTORY, title="Bank Saved!", text="⚡ You burst through the bank doors! In a flurry of action, you disarm the gang! The townspeople lift you on their shoulders!", image_url="🎖️", reward_points=75, reward_badge="Bank Guardian"),
