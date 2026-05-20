@@ -20,6 +20,7 @@ import VictoryModal from '../../src/components/VictoryModal';
 import QuestCard from '../../src/components/QuestCard';
 import JourneyMap from '../../src/components/JourneyMap';
 import GlassPanel from '../../src/components/GlassPanel';
+import ParallaxHero from '../../src/components/ParallaxHero';
 import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -89,23 +90,14 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root} testID="home-screen">
-      {/* CINEMATIC HERO BACKGROUND */}
-      <View style={styles.heroContainer}>
-        <Image
-          source={{ uri: theme.imageUrl }}
-          style={styles.heroImage}
-          contentFit="cover"
-          transition={500}
-        />
-        {/* Theme tint overlay */}
-        <View style={[styles.heroTint, { backgroundColor: theme.tintOverlay }]} />
-        {/* Bottom fade to black */}
-        <LinearGradient
-          colors={['transparent', 'rgba(10,10,10,0.4)', 'rgba(10,10,10,0.85)', GLOBAL_THEME.background]}
-          locations={[0, 0.5, 0.8, 1]}
-          style={styles.heroFade}
-        />
-      </View>
+      {/* CINEMATIC HERO with GYROSCOPE PARALLAX */}
+      <ParallaxHero
+        imageUrl={theme.imageUrl}
+        tintColor={theme.tintOverlay}
+        height={HERO_HEIGHT}
+        intensity={28}
+        fadeToBackground
+      />
 
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView

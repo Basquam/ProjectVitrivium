@@ -53,10 +53,11 @@ Each story is a complete world with unique colors, fonts, and atmospheric backgr
 - **VictoryModal**: Theme-colored, animated, with villain name + streak bonus + badge unlock
 - **GlassPanel**: BlurView wrapper with web fallback
 
-### 7. Sound & Haptics
+### 7. Sound, Haptics & Motion
 - Haptic feedback (Heavy on completion, Selection on tap, Success notification on victory)
 - Confetti celebrations with theme colors
 - Spring animations on beat reveals
+- **Gyroscope Parallax**: Hero background subtly drifts as user tilts device — uses expo-sensors DeviceMotion with reanimated springs (damping=25, stiffness=80). Inverse motion creates "window into another world" illusion. Web silently falls back to static. iOS NSMotionUsageDescription added.
 
 ## Technical Architecture
 

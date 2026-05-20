@@ -17,6 +17,7 @@ import { useFocusEffect } from 'expo-router';
 import { useApp } from '../../src/contexts/AppContext';
 import { getTheme, GLOBAL_THEME, DEFAULT_THEME } from '../../src/theme';
 import GlassPanel from '../../src/components/GlassPanel';
+import ParallaxHero from '../../src/components/ParallaxHero';
 
 export default function ProfileScreen() {
   const [stats, setStats] = useState<any>(null);
@@ -62,21 +63,14 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.root} testID="profile-screen">
-      {/* Cinematic hero background */}
-      <View style={styles.heroBg}>
-        <Image
-          source={{ uri: theme.imageUrl }}
-          style={styles.heroBgImg}
-          contentFit="cover"
-          transition={400}
-        />
-        <View style={[styles.heroBgTint, { backgroundColor: theme.tintOverlay }]} />
-        <LinearGradient
-          colors={['rgba(10,10,10,0.3)', 'rgba(10,10,10,0.85)', GLOBAL_THEME.background]}
-          locations={[0, 0.6, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </View>
+      {/* Cinematic hero background with parallax */}
+      <ParallaxHero
+        imageUrl={theme.imageUrl}
+        tintColor={theme.tintOverlay}
+        height={320}
+        intensity={20}
+        fadeToBackground
+      />
 
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView
