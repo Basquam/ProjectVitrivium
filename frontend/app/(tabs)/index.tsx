@@ -20,6 +20,7 @@ import QuestCard from '../../src/components/QuestCard';
 import JourneyMap from '../../src/components/JourneyMap';
 import GlassPanel from '../../src/components/GlassPanel';
 import ParallaxHero from '../../src/components/ParallaxHero';
+import WorldIcon from '../../src/components/WorldIcon';
 import { completeTask, deleteTask } from '../../src/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -241,13 +242,11 @@ export default function HomeScreen() {
               {/* Floating story icons - hint at the variety of worlds */}
               <View style={styles.worldsHint}>
                 {Object.values(STORY_THEMES).map((t, idx) => (
-                  <Animated.View
+                  <WorldIcon
                     key={t.id}
-                    entering={FadeIn.delay(400 + idx * 100).duration(500)}
-                    style={[styles.worldIcon, { borderColor: t.primary }]}
-                  >
-                    <Text style={styles.worldIconText}>{t.emoji}</Text>
-                  </Animated.View>
+                    theme={t}
+                    delay={400 + idx * 120}
+                  />
                 ))}
               </View>
               <Text style={styles.worldsHintLabel}>SIX WORLDS AWAIT</Text>
